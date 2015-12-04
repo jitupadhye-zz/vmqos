@@ -1,0 +1,63 @@
+\section{The Case for WFQ with more relaxed constraints}
+
+Many applications, such as file server, web server, video streaming, do not need
+per-packet level fairness.  These applications are already built to handle
+network congestions, delays and jitters, and continually pushes for as much
+bandwidth (e.g. via TCP windows) as needed to meet their demands.  These
+applications can tolerate some small ramp-up delay in getting their bandwidth
+reservation.  Our experiments show that a 300ms ramp-up delay do not have any
+noticeable effect on these applications.  Furthermore, our experiments show that
+these applications are more susceptible to fluctuations in bandwidth allocations
+than they are to slow ramp-up time. The requirements to support bandwidth
+reservation for these applications are:
+
+\begin{itemize}
+\item
+The queue needs to be allocated its bandwidth reservation within a time that is
+significantly shorter than the duration of the application.  Given that these
+applications typically send traffic on the order of minutes, a 300ms ramp-up
+delay would be sufficiently short.  
+\item The allocated bandwidth should not
+fluctuate faster than the ramp-up delay.
+\end{itemize}
+
+Given these requirements, a lot of the complexity and cost that comes with
+ensuring per-packet level fairness can be eliminated, making it simple to
+implement a bandwidth reservation framework that is hardware-agnostic, and works
+in a general-purpose host. 
+
+Our solution forgoes per-packet level fairness WFQ.  Instead, we use a
+measurement-based WFQ approach with a more relaxed constraints on fairness and
+bandwidth guarantee.  Our solution substantially reduces the complexity of
+per-packet level WFQ and can scale across multiple CPUs, while satisfying the
+following SLA:
+
+Given a set of flows $F=[f1, f2, \ldots fn]$ with demands $D=[d1,d2,\ldots,dn]$
+and weights $W=[w1,w2,\ldots, wn]$, sharing an output link of capacity $C$, a
+set of bandwidth allocations $A=[a1, a2, \ldots, an]$ is enforced such that:
+$(i)$Sum(A) <= C $(ii)$	If $ai < C*wi$, and $di > ai$, then $ai=min(di, R*wi)$ within
+a time period T.  $(iii)$ When the system is in steady state, if $Sum(D) >= C$,
+then $Sum(A) = C$.
+
+The first condition provides flow isolation on the shared resource to guarantee
+each flow its bandwidth allocation. The second condition guarantees that a
+flow’s bandwidth allocation will satisfy its demand, up to its reservation,
+within a time T.  Our current implementation guarantees T to be 300ms or less.
+The third condition provides the work-preserving property of WFQ in
+steady-state.  This distinguishes our implementation from a trivial bandwidth
+guarantee implementation with static multiplexing (i.e. providing a static max
+cap for each VM)
+
+We implemented our WFQ scheduler as an NDIS filter driver in Windows.  As
+packets are sent from the application layer, through the NDIS stack, on multiple
+processors, the filter driver enforces bandwidth reservation by shaping the
+per-processor queues, and therefore avoids the need to re-queue packets on a
+different processor.  The advantages of having packets processed on the same
+processor throughout the entire stack include: Avoiding L1 \& L2 cache misses,
+and preserves the distributed nature of packet processing in modern operating
+systems.  Eliminating cross-processor lock contention in the data path.
+Furthermore, our filter takes less than 5\% of any CPU to enforce bandwidth
+reservation when the network interface is congested.  When the network interface
+is not congested, our filter is just a pass-through, and is virtually out of the
+data path.
+

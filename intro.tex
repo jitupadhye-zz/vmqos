@@ -1,0 +1,59 @@
+\section{Introduction}
+
+Network bandwidth reservation is a feature that guarantees a certain amount of
+network bandwidth for a flow that uses a shared resource, typically a network
+adapter.  When the flow has demand, it is guaranteed at least up to its
+bandwidth reservation value.  When the flow transmits below its reservation, or
+is idle, the bandwidth becomes available for other flows to consume.  
+
+Bandwidth reservation is generally achieved with Weighted Fair Queuing, which
+isolates flows into queues of different weights, and allocates bandwidth to each
+queue according to its demand and relative weight.  WFQ generally implies a
+packet-level fairness across queues.  In packet-based switches and routers, WFQ
+is implemented with a round-robin scheduler that schedules packets out of each
+queue according to their weights and demand.  Implementations of WFQ in this
+space are well-understood, backed up by decades of research.  These
+implementations are often done either in hardware, or in special-purpose
+software with direct access to the hardware API (i.e. device driver or
+firmware).  As we move the implementation of WFQ further away from the hardware
+and make the software more general-purpose, it becomes more complex and costly
+to enforce packet-level fairness at the hardware.
+
+As we move the implementation of WFQ further away from the hardware and make the
+software more general-purpose, it becomes more complex and costly to enforce
+packet-level fairness at the hardware.
+
+\begin{itemize}
+\item
+A round-robin packet scheduler across all queues needs to run on a single
+processor in order to prevent out-of-order packet delivery among packets within
+each flow.  In order to keep up with data-center-level packet rates, such
+single-core scheduler puts limitations on how much packet processing can be done
+between the scheduler and the hardware.
+\item
+On the other hand, having per-queue or per-processor schedulers requires tight
+coordination among schedulers, at packet-level granularities, which is not
+feasible at very high data rate (40Gbps -- 100Gbps).  
+\item
+Furthermore, WFQ requires a feedback loop between the schedulers and the
+hardware transmit buffer, which might not exist when the software module is
+sufficiently removed from the hardware API.
+\end{itemize}
+
+There are, however, many benefits to being able to enforce bandwidth reservation
+in software, in a generic operating system, without any special hardware
+dependency.  It allows the creation of a bandwidth reservation framework on top
+of any generic network interface, which eliminates the need for expensive
+hardware.  The benefits are even greater if such software can operate without
+consuming excessive cycles from any one processor, or is limited to a single
+processor, as it would enable bandwidth reservation without requiring a
+dedicated machine, or a dedicated processor, and be able to scale out when more
+CPUs are available.
+
+In this paper, we present a WFQ solution that satisfies the following
+constraints: (i) The scheduler must run on top of a general-purpose software
+stack, communicating with the NIC hardware via general hardware abstraction
+layer provided by a general OS. (ii) Packet processing needs to scale across
+multiple CPUs.  This constraint is necessary in order to avoid the potential of
+having WFQ enforcement be the network bandwidth bottleneck.  It allows the
+scheduler to scale with more CPUs.
