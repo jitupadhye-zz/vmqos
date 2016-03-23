@@ -1,59 +1,131 @@
-\section{Introduction}
+\section {Introduction}
 
-Network bandwidth reservation is a feature that guarantees a certain amount of
-network bandwidth for a flow that uses a shared resource, typically a network
-adapter.  When the flow has demand, it is guaranteed at least up to its
-bandwidth reservation value.  When the flow transmits below its reservation, or
-is idle, the bandwidth becomes available for other flows to consume.  
+We revisit the age-old problem of weighted fair allocation of
+bandwidth among competing ``flows'', and propose a new solution.  There are
+hundreds, if not thousands of papers on this topic. So why 
+invent something new?  Our reason is simple: while the core problem is the
+same, the new context and requirements caused by software 
+implementation in a{\em virtualized cloud} both {\em demand} 
+and {\em allow} a simple and CPU-efficient solution. 
 
-Bandwidth reservation is generally achieved with Weighted Fair Queuing, which
-isolates flows into queues of different weights, and allocates bandwidth to each
-queue according to its demand and relative weight.  WFQ generally implies a
-packet-level fairness across queues.  In packet-based switches and routers, WFQ
-is implemented with a round-robin scheduler that schedules packets out of each
-queue according to their weights and demand.  Implementations of WFQ in this
-space are well-understood, backed up by decades of research.  These
-implementations are often done either in hardware, or in special-purpose
-software with direct access to the hardware API (i.e. device driver or
-firmware).  As we move the implementation of WFQ further away from the hardware
-and make the software more general-purpose, it becomes more complex and costly
-to enforce packet-level fairness at the hardware.
+Traditionally, fair bandwidth allocation has been studied in the
+context of a router or a switch where one had to deal with
+thousands, if not millions of flows. It was also deemed necessary (perhaps
+without justification) that bandwidth had to be apportioned between 
+flows at a fine granularity approaching ideal processor sharing. The router/switch context 
+also assumed tight coupling between the packet transmission engine and the
+packet scheduler since both were implemented in switch hardware.  For example, the
+DRR~\cite{drr} implementation assumes that the scheduler is woken up on every
+packet departure. Further, the "CPU utilization" was important only in the
+sense that the switch hardware had to capable of handling the expected workload
+because the CPU (switch hardware) was dedicated to scheduling.
 
-As we move the implementation of WFQ further away from the hardware and make the
-software more general-purpose, it becomes more complex and costly to enforce
-packet-level fairness at the hardware.
+We arrived at this problem in a very different context. Our goal was to build a
+packet scheduler to ensure that VMs hosted on a single server share outgoing
+bandwidth in proportion to specified weights. Our scheduler is implemented in the Windows
+hypervisor Vswitch. A customized version of this Vswitch powers Azure, and many
+large corporations also use it in their private clouds. Our context implies:
 
 \begin{itemize}
-\item
-A round-robin packet scheduler across all queues needs to run on a single
-processor in order to prevent out-of-order packet delivery among packets within
-each flow.  In order to keep up with data-center-level packet rates, such
-single-core scheduler puts limitations on how much packet processing can be done
-between the scheduler and the hardware.
-\item
-On the other hand, having per-queue or per-processor schedulers requires tight
-coordination among schedulers, at packet-level granularities, which is not
-feasible at very high data rate (40Gbps -- 100Gbps).  
-\item
-Furthermore, WFQ requires a feedback loop between the schedulers and the
-hardware transmit buffer, which might not exist when the software module is
-sufficiently removed from the hardware API.
+\item {\bf We cannot make assumptions about hardware support:} We are required to support
+numerous legacy deployments, so we cannot assume NIC hardware support for
+packet scheduling. Packet scheduling must be done in the CPU.
+
+\item {\bf NIC Feedback is imperfect and coordination costs between CPU and NIC are
+high:} The tight coupling between the packet transmitter and the scheduler in hardware
+switches cannot be realized in a software Vswitch.  Crossing the hardware-software boundary
+is very expensive at Gigabit speeds; this is precisely why optimizations
+like Large Send Offload and Interrupt batching are used to reduce communication to once for
+a large batch of packets.  In a VM world, transmission from a VM to the NIC
+should ideally bypass (at least in the common case) a coordinating scheduler to
+minimize context switches, and avoid access to shared state (to minimize lock
+overhead).  Further, to scale to 40 Gbps, the scheduler should be distributed
+across cores instead of being single-threaded. 
+
+\item {\bf CPU cycles are precious:} From a cloud provider's perspective, any
+CPU cycles that can be saved from routine tasks such as packet scheduling, can
+be resold for profit, especially with the advent of elastic
+computing~\cite{aws}.  This makes us depart from the state-of-the art software
+solutions such as QFQ~\cite{qfq} and some commercial implementations such as
+VMWare~\cite{} based on similar ideas.  In QFQ, a core is used to implement a
+packet scheduler; while QFQ is very efficient~\cite{qfq} it still requires a CPU
+to do significant processing on every packet sent to the network.
+
+\item {\bf Fine-grained guarantees are unnecessary:} Public and private cloud providers typically host 
+less than 100 VMs per physical server, and provide only per-VM bandwidth guarantees.  These
+guarantees are often coarse, and are dermined by the pricing tier.  A granularity
+of 1 Gbps typically suffices.  Fine-grained, per-flow bandwidth is neither
+used nor demanded by the customers, since application-layer issues often have
+far more impact on network throughput.
 \end{itemize}
 
-There are, however, many benefits to being able to enforce bandwidth reservation
-in software, in a generic operating system, without any special hardware
-dependency.  It allows the creation of a bandwidth reservation framework on top
-of any generic network interface, which eliminates the need for expensive
-hardware.  The benefits are even greater if such software can operate without
-consuming excessive cycles from any one processor, or is limited to a single
-processor, as it would enable bandwidth reservation without requiring a
-dedicated machine, or a dedicated processor, and be able to scale out when more
-CPUs are available.
+Some things never change though -- we {\em do} want our scheduler to be as
+work-conserving as possible, and we {\em do} want to allocate any spare
+bandwidth roughly proportionally among the VMs that have backlogged traffic. 
 
-In this paper, we present a WFQ solution that satisfies the following
-constraints: (i) The scheduler must run on top of a general-purpose software
-stack, communicating with the NIC hardware via general hardware abstraction
-layer provided by a general OS. (ii) Packet processing needs to scale across
-multiple CPUs.  This constraint is necessary in order to avoid the potential of
-having WFQ enforcement be the network bandwidth bottleneck.  It allows the
-scheduler to scale with more CPUs.
+Thus, we need a packet scheduler that will impose minimum CPU overhead, while
+providing the simple guarantees that we need. To do so, we refactor scheduling
+into two parts: a {\em microscheduler} (Figure~\ref{fig:macroscheduler} that
+works on behalf of a VM based on allocated tokens, and a {\em macroscheduler}
+that periodically allocates tokens to each microscheduler based on the bandwidth
+used by each VM.  Coordination costs are limited to the macroscheduler that runs
+once every scheduling period $T$ (say 10 msec); by contrast, each microscheduler
+can run in a separate thread/core allowing scaling to 40 Gbps of overall
+transmit bandwidth with little CPU overhead, as we demonstrate in
+Section~\ref{sec:experiments}.
+
+The imperfect feedback from the NIC also implies that, without care, the
+microcontrollers can send at rates that cause the NIC to drop
+packets.   Thus, besides classical fair queuing, the macroscheduler also needs to
+solve a {\em congestion problem} to ensure that the sum of the allocated
+bandwidths to each microscheduler is less  than the NIC bandwidth.  A classical
+router hardware fair queing scheduler does this implicitly because it paces its
+transmissions perfectly based on notifications from the NIC.
+
+The tradeoff we make in our design is that when demand changes, it takes some
+number of macroscheduler periods before the system converges to Max-min fair
+allocations, whether in allowing a previously idle VM to recapture its allocated
+bandwidth or to redistribute bandwidth when a VM's demand falls below its
+allocated bandwidth.  This arises partly because of our desire for low overhead
+which results in the macroscheduler only running every $T$ seconds.  But this
+delay also arises because of our need to stably measure the bandwidth demand of
+a VM.  Even if the measured bandwidth in the last $T$ seconds is high, the
+macroscheduler must be wary of a burst.
+
+Thus, reminiscent of TCP~\cite{tcp}, the macroscheduler gradually
+increases/decreases the allocated bandwidth to a VM based on its measured demand
+in the last period.  Unlike TCP, however, the VM clients have some common state
+they can access periodically via the macroscheduler; this shared state can be
+used to enable eventual {\em weighted fairness}, which is simply not a goal of
+TCP.  The measurement based approach to estimating bandwidth is also evocative
+of a large body of work in Measurement Based Admission control
+(MBAC)~\cite{mbac}.  However, MBAC concentrates on {\em admission control of flows} and
+not on real-time {\em fair queing of packets}. Table~\ref{comparison}
+summarizes these differences. We survey related work in more detail 
+in Section~\ref{sec:relatedwork}.
+
+\begin{table*}[h]
+{\footnotesize
+\begin{tabular}{l|l|l|l} \\
+& Difference & Similarity & Can Exploit \\ \hline
+Fair Queuing & Imperfect feedback. No real time scheduler in path & Weighted fair allocation & Relaxed definition of fairness \\ \hline
+MBAC & Packet scheduling, not addmission control & Estimate demand based on past & Can be looser in estimate \\ \hline
+TCP & Weighted fairness is a secondary goal for TCP & Gradually adjust rates to converge & VMs share a VM switch
+\end{tabular}
+}
+\caption{Comparison of Measurement Based Fair Queuing (MBFQ) with TCP and Measurement Based Admission Control (MBAC) }
+\label{microcosm}
+\vspace{-3mm}
+\end{table*}
+
+The rest of the paper is organized as follows.  Section~\ref{sec:modell}
+describes our model and measures and Section~\ref{sec: measurements}describes
+some motivating measurements to justify our model.  Section~\ref{sec:algorithm}
+describes our MBFQ algorithm, while Section~\ref{sec:implementation} describes
+our implementation in the Windows server code which previewed on Jan 21st 2015.
+We then move to evaluating MBFQ with some simple theoretical bounds in
+Section~\ref{sec:theory} followed by experimental evaluation of performance and
+speed of convergence in Section~\ref{sec:experiments}.  We end with a more
+detailed survey of related work in Section~\ref{sec:relatedwork} followed by a
+discussion of the fundamental obstacles to improving convergence speeds MBFQ in
+Section~\ref{sec:discussion}.

@@ -1,10 +1,12 @@
-\documentclass{sig-alternate-10pt-compact}
+\documentclass{sig-alternate-10pt}
 
 \usepackage{amsmath,amssymb}
 \usepackage{url}
 \usepackage{multirow}
 \usepackage[usenames]{color}
-\usepackage{algorithmic,algorithm}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage[noend]{algpseudocode}
 \usepackage{times}
 \usepackage{balance}
 \usepackage{graphicx}
@@ -48,23 +50,20 @@
   \setlength{\partopsep}{0pt}  
 }{\end{list}}
 
+
 \begin{document}
 
 \clubpenalty=10000 
 \widowpenalty = 10000
 
-\title{Bandwidth Sharing in a Virtualized Evvironment}
+\title{Measurement Based Fair Queuing for Allocating Bandwidth to Virtual Machines: A Simple, yet Robust Strategy}
 
-\author{Paper \# XXX. Pages YYY}
+\author{Paper \# 31. Pages 6.}
 
 \maketitle
 \input{abstract}
 \input{intro}
-\input{motivation}
-\input{related}
-\input{conclusion}
-
-\balance
+\input{model}
 \bibliographystyle{abbrv}
 \bibliography{qos}
 

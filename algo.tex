@@ -1,0 +1,154 @@
+\section{MBFQ Algorithm}
+\label{sec:algorithm}
+
+\begin{figure}
+\begin{algorithmic}
+\State //
+\State // MG: min guarantee (what the VM has paid for)
+\State // SR: measured ssend rate since last macro scheduler iteration.
+\State // TR: computed target rate for this iteration.
+\State // AR: currently allocated rate
+\State //
+\State $residualBandwidth = lineRate$
+\State $totalNeedsMoreWeight = 0$
+\end{algorithmic}
+\caption{}
+\end{figure}
+
+The main idea of MBFQ is to work in intervals of length $T$ where $T$ is
+sufficiently large to reduce variance in measurement of sending rates for
+typical network applications, and yet not too much larger than is strictly
+necessary because the larger $T$ is, the larger $T_{inc}$ and $T_{dec}$ is.
+This is because the macroscheduler only adjusts allocated rates in intervals of
+length $T$.   We will show in the experimental section that if $T$ is around
+$100$ msec, then the standard deviation is around $5\%$ for a TCP sender; while
+the deviation goes down to $1\%$ as $T$ increases to $1$ seconds, it also slows
+down responsiveness.  Hence our code uses $T = 100$ msec as a default.
+
+The basic idea is simple.  We measure what every VM has sent in the last $T$
+seconds and store in a variable $SR$ (for send rate).  In the first phase, by
+comparing the sent rate to the amount  allocated to that VM in the last interval
+($AR$), we make an estimate of whether this VM's allocation should (in an ideal
+world with no constraints) increase or decrease and compute a target rate $TR$
+in this ideal world. Then in a second phase, we incorporate the reality of a
+fixed pot of link bandwidth and the other VMs that wish to send in order to
+enforce fair-queuing and congestion freedom.
+
+{\bf Phase 1: Determining Ideal Rates:}  First, we determine ideal rates for
+each VM in an world where this VM is the only player based on past performance.
+For example, if $SR > 0.95 AR$, then there is a case to be made that the VM
+should be allocated more bandwidth (it has used what it was allocated).  Asking
+a VM to use up everything it was allocated seems too strict, becausae of natural
+variations in sending rates.  Of course, $95\%$ is merely a parameter.    
+
+Similarly, if a VM's sending rate has fallen by some percentage of its allocated
+rate, we might want to reduce the VM' s allocated rate.  Here we might choose to
+be cautious.  A VM that has paid for $4$ Gbps. and was allocated that much, may
+be measured to fall briefly below $4$ for a few intervals.  While if this
+situation persists, we should reallocate the bandwidth, we wish to guard against
+short term fluctuations that cause the algorithm to too eagerly reclaim
+bandwidth.  Since it takes a few intervals to rise again, we choose to defend
+against this by rising fairly quickly (say in 4 periods), but reclaiming
+bandwidth at a much slower rate (say 10 periods).   
+
+In summary, the first phase of the algorithm decides a target rate $TR$ based on
+past sending performance.  If the VM has used its allocation, we mark it for
+increase; otherwise, we keep it the same or even decrease it (after some number
+of periods demonstrating this behavior) to close to its sending rate.    This
+brings up the question: how should we increase a VM (still in an ideal world, we
+will consider sharing in the second phase).  
+
+To see the difficulty, suppose a VM $A$ has paid $2000$ a month for $5$ Gbps of
+traffic and has been idle for a long time, and hence was allocated only a small
+minimal amount of bandwidth of say $10$ Mbps.  Other VMs are using portions of
+$A$'s bandwidth.  $A$ now decides to initiate a large data transfer which
+requires its full guaranteed rate.   But $A$ has been allocated only $10$ Mbps.
+We wish $A$ to rise rapidly from $10$ Mbps to $5$ Gbps.
+
+In the first interval after $A$ initiates the data transfer $A$ will be measured
+to have sent $10$ Mbs.  Since $A$ has shown intent to send, why not increase $A$
+directly to $5$ Gbps.   The difficulty is if $A$ for other reasons can only send
+at say $1$ Gbps.  In that case raising $A$ to $5$ can "waste" 4 Gbps for one
+interval.  So a more cautious strategy seems to be in order.
+
+Instead, we keep some state and (almost like TCP) and gradually increase $A$'s
+allocations, taking care to bound $A$'s rise to its guaranteed rate.   For
+example, in our current code, in the first period, we give $A$, $20\%$ more
+allocation; if $A$ uses that up, we give $A$, $50\%$ more bandwidth.  However,
+after some number of periods in which $A$ uses up all its allocations, we simply
+aim to give $A$ at least its guaranteed bandwidth.   We bound that by 4 periods
+in our current code.    
+
+{\bf Phase 2:  Preventing Congestion and Enforcing Fair Sharing:}  So far the
+algorithm has only determined the ideal allocations for each VM based on their
+traffic pattern displayed in the last period.   However, to achieve
+congestion-freedom, statistical multiplexing and fair sharing we must do more.
+If the sums of the ideal rates computed in the first phase exceeds the lnk
+bandwidth, we must prevent congestion.  If some VMs's ideal rates are below
+their guaranteed rates, we must distribute unused bandwidth in proportion to the
+weights of all flows that wish to use this bandwidth.  
+
+Phase 2 begins by initializing each VM's allocated rate to be the m:w
+inimum of its
+ideal rate and its guaranteed rates.  This initial allocation guarantees
+congestion freedom since by definition, the sum of the guaranteed rates cannot
+exceed the link bandwidth.  But it can leave bandwidth on the table. This
+remaining bandwidth is the link bandwidth minus the sum of the initial
+(conservative) allocations.
+
+To distribute "remaining" bandwidth, the algorithm marks the VMs whose ideal
+target rates are more than their guaranteed rates as VMs that "need more
+bandwidth".  Phase 2 then goes through a loop where it allocates the remaining
+bandwidth to the needy VMs in proportion to their weights.  
+
+This is subtler than it may appear.   At the end of one sub-iteration of this
+second allocation phase, one may have allocated a VM more than its ideal rate
+calculated in the first phase.  Since, the ideal rate is our proxy for what the
+VM would desire in an ideal world without sharing, we remove this bandwidth and
+iterate again.  
+
+Once again, we mark VMs whose allocated rates are still less than their ideal
+rates as needy, and allocate the remaining bandwidth among the still needy VMs.
+This iteration continues until no bandwidth is left or no VMs are needy.   We
+can prove that this loop terminates in that at least one VM will be removed from
+the needy list in each iteration.  Note that these iterations within Phase 2 are
+merely a few lines of code that run in nanoseconds (not in intervals of $T$); so
+even doing this for 100s of VMs will not take be too slow.
+
+The initialization for the MBFQ algorithm is shown in
+Figure~\ref{initialization}.  Note that $RUStage$ (for Ramp Up Stage) is a state
+variable that tracks the number of iterations over which a VM has been
+increasing.  Every time a VM comes close to it's target, this counter is
+increased (but to no more than $3$); every time a VM falls significantly below
+its target this counter is decreased.  The 
+
+\subsection{PseudoCode}
+
+The pseudocode for the first part of Phase 1 is shown in
+Figure~\ref{phase1start}. This code determines the slope of the VM's bandwidth
+change (needs to increase, decrease or stay the same) by comparing the amount
+allocated in the last period to what the VM sent, using some percentage
+thresholds for some margin.  If it is falling, $RUStage$ is decreased; if it is
+increasing $RUStage$ is incremented, always being careful to keep $0 \leq
+RUStage \leq 3$. 
+
+The pseudocode for the second part of Phase 1 is shown in
+Figure~\ref{phase1finish}.  This is where the number of consecutive iterations
+over which a VM has been determined to increase (tracked by $RUStage$) is used
+to determine how aggressive an ideal increase to allocate to the VM, starting
+from a modest $10\%$ increase all the way to at least the guaranteed bandwidth
+in 4 iterations.
+
+The pseudocode for the first part of Phase 2 is shown in
+Figure~\ref{phase2start}.  It uses a new variable called $TempRate$ that is
+initialized to be no more than the guaranteed rate.   This is then used to
+compute how much bandwidth is left over, and which VMs can (based on their ideal
+allocations) use up this remaining bandwidth.
+
+The pseudocode for the second part of Phase 2 is shown in
+Figure~\ref{phase2finish}.   It is a loop that allocates the excess to all the
+needy VMs. If each VM then remains below its ideal target rate, the loop
+terminates.  However, if some VM is allocated more than it uses, this wasted
+bandwidth is added back to the remaining bandwidth and the loop continues.
+
+
