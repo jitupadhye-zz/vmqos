@@ -2,17 +2,19 @@
 \label{sec:algorithm}
 
 \begin{figure}
+{\footnotesize
 \begin{algorithmic}
 \State //
-\State // MG: min guarantee (what the VM has paid for)
-\State // SR: measured ssend rate since last macro scheduler iteration.
+\State // MG: minimim guaranteed rate (what the customer has paid for)
+\State // SR: measured send rate since last macro scheduler iteration.
 \State // TR: computed target rate for this iteration.
 \State // AR: currently allocated rate
 \State //
 \State $residualBandwidth = lineRate$
 \State $totalNeedsMoreWeight = 0$
 \end{algorithmic}
-\caption{}
+}
+\caption{Notation and Initialization of MBFQ}
 \end{figure}
 
 The main idea of MBFQ is to work in intervals of length $T$ where $T$ is
@@ -88,8 +90,7 @@ bandwidth, we must prevent congestion.  If some VMs's ideal rates are below
 their guaranteed rates, we must distribute unused bandwidth in proportion to the
 weights of all flows that wish to use this bandwidth.  
 
-Phase 2 begins by initializing each VM's allocated rate to be the m:w
-inimum of its
+Phase 2 begins by initializing each VM's allocated rate to be the minimum of its
 ideal rate and its guaranteed rates.  This initial allocation guarantees
 congestion freedom since by definition, the sum of the guaranteed rates cannot
 exceed the link bandwidth.  But it can leave bandwidth on the table. This
