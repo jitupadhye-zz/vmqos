@@ -1,16 +1,13 @@
 \section{Model}
 \label{sec:model}
 
-The classical fair queuing problem is that given input bandwidths $IB_i$ with
-weights $W_i$ for all clients calculate allocated bandwidths $AB_i$ for each
+Given input bandwidths $IB_i$ with weights $W_i$ for all clients, we seek to allocate bandwidths $AB_i$ for each
 client such that:  
 
 {\bf 1. Congestion Freedom:}  The sum of the allocated bandwidths does not
-exceed the bandwidth $B$ of the outbound link. This is rarely specified
-explicitly as a classical hardware scheduler only operates after each packet is
-transmitted, so the model ensures there is no congestion.
+exceed the bandwidth $B$ of the outbound link. 
 
-{\bf 2. Strong Fair Allocation: } Divide $B$ among active clients in proportion
+{\bf 2. Strong Fair Allocation: } $B$ is divided among active clients in proportion
 to their weights $W_i$.
 
 \begin{figure}[t]
@@ -21,30 +18,24 @@ to their weights $W_i$.
 \vspace{-2mm}
 \end{figure}
 
-There are many algorithms for this classical fair queuing model including
-Deficit Round Robin, Start-time Fair Queuing, and Worst Case Weighted Fair
-Queuing~\cite{drr, stfq,w2fq, qfq}. These algorithms make two implicit
-assumptions. First, they assume that after transmission of a packet the link
-alerts the hardware scheduler that then chooses the next packet to transmit. The
-second assumption is that the scheduler is able to keep up with link speed.
-Both these assumptions are reasonable in the scenarios where fair queuing is
-traditionally investigated - i.e. routers and switches.
+Classical fair queuing model including Deficit Round Robin, Start-time Fair Queuing, and Worst Case Weighted Fair
+Queuing~\cite{drr, stfq,w2fq, qfq} make two implicit
+assumptions. First, after packet transmission the link
+alerts the hardware scheduler who chooses the next packet to transmit. Second,
+the scheduler is able to keep up with link speed.
+Both assumptions are reasonable for hardware routers and switches.
 
-However, in our scenario the model is the one shown in
-Figure~\ref{fig:vmqosmodel}.  The first thing that has changed when going from
-Figure~\ref{fig:vmqosmodel} to Figure~\ref{fig:qosmodel} is that the feedback
-loop between the link and the scheduler has now become a batched feedback loop.
-Modern NICs use mechanisms like Large Send Offload (LSO) to minimize overhead.
-Thus they can only generate one send-complete notification for a group of
-packets, instead of generating one for every individual packet.  Without a
-per-packet feedback loop, a DRR-like implementation in software will receive
-transmit completion notifications in bursts.  Not only will these bursts cause
-transmit jitter, but the bursts can also be very far in between, with respect to
-the rate of packet arrival, causing the queues to overflow and packets to be
+However, in our model  (Figure~\ref{fig:vmqosmodel}) unlike
+in Figure~\ref{fig:qosmodel} the feedback
+loop between link and scheduler has now become batched.
+Since modern NICs use mechanisms like Large Send Offload (LSO) to minimize overhead,
+they can only generate one send-complete notification for a group of
+packets.  Without per-packet feedback, a DRR software implementation will receive
+transmit completion notifications in bursts.   Besides causing transmit jitter, 
+the bursts can be far apart with respect to packet arrivals, causing packets to be
 dropped. Second, even if the NIC could invoke the scheduler on a per-packet
 basis, the cost of running the scheduler after every packet departure will be
-prohibitive. It typically takes at least one full core to saturate a 40Gbps link,
-if not more. 
+prohibitive. It typically takes at least one full core to saturate a 40Gbps link.
  
 \begin{figure}
 \centering
@@ -54,27 +45,23 @@ if not more.
 \vspace{-3mm}
 \end{figure}
 
-We also need to deal with some additional constraints in our scenario.
-The software entity that schedules packets out of the queues need to
+Our model imposes additional constraints.
+The software entity that schedules packets from the queues must
 ensure that packets are en-queued to the NIC's transmit buffer in the same order
-that they are de-queued from the different queues.  
+that they are de-queued from VSwitch queues.  
 
 There are two options to achieve this. First, the software could use a handle to
 the NIC's transmit buffer.  This requires strong coordination between the
-software module and the NIC's driver.  For a software implementation on top of a
-hardware abstraction layer in a general-purpose OS that needs to work across a
-large variety of NIC vendors (e.g. the NDIS abstraction layer in Windows), this
-is not currently a feasible option.  
+software module and the NIC's driver.  This is not feasible for a software implementation on top of a
+hardware abstraction layer (e.g. NDIS in Windows).
+ in a general-purpose OS that must work across many NIC vendors
 
-A second alternative is that the software entity has to be single-threaded so
-that each packet are processed sequentially through the entire software stack
-from when it is de-queued from the software queues until it is queued to the
-NIC's transmit buffer. This requires a single processor to handle all packet
-processing through the entire software stack. This is not a scalable solution at
-multi-gigabit speed.  Additionally, having to process packets on a single thread
+A second alternative is to make the software entity single-threaded so
+that each packet is processed sequentially through the entire software stack
+from VSwitch to NIC using a single processor. This is not scalable at
+multi-gigabit speeds.  Additionally, having to process packets on a single thread
 forces packets that were processed on different processors to be then processed
-on a different single processor, leading to cache misses, which can lead to
-added latency.
+on a different single processor, leading to cache misses which increase latency.
 
 A way out of these difficulties is to divide the scheduler into two enties as
 shown in Figure~\ref{fig:macroscheduler}.   The macroscheduler runs only every
