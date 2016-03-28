@@ -31,86 +31,61 @@
 \label{fig:mbfq_p2}
 \end{figure}
 
-The MBFQ algorithm adjusts rate allocation every $T$ seconds.  $T$ must
-sufficiently large to ensure accurate estimation of sending rates. However, a
-value that is too large will affect $T_{inc}$ and $T_{dec}$.  In the
-experimental section, we will show that using $T=100ms$ works well for our
-purposes. 
-
 The MBFQ algorithm calculates rate allocation in two steps every $T$ seconds.
 First, we compute an ideal target rate ($TR$) for each VM, by comparing its
-measured send rate ($SR$) to the allocated rate ($AR$). In the second phase, we
-adjust the target rates to ensure that the link is not oversubscribed and rates
-are allocated according to weights. These adjusted target rates then become the
-allocated rates.
-
-Some notation and initialization pseudocode is shown in
-Figure~\ref{fig:mbfq_init}.
+measured send rate ($SR$) to the allocated rate ($AR$). $TR$ is a proxy for what
+the VM would desire if it were not subject to constraints like link bandwidth,
+and sharing with other VMs.  In the second phase, we adjust the $TR$ to ensure
+that the link is not oversubscribed and rates are allocated according to
+weights. These adjusted target rates then become the allocated rates.  Some
+notation and initialization of MBFQ is shown in Figure~\ref{fig:mbfq_init}. 
 
 {\bf Phase 1: Computing target rates:} 
-Our goal is to calculate a new target rate for every VM, based on traffic
-patterns from its recent past.  Intuitively, if a VM is not fully using its
-allocated rate, we should reduce its allocated rate, and offer the residual
-bandwidth to other VMs. On the other hand, if the VM is indeed fully using its
-allocated rate, it may be able to use additional bandwidth. 
+The pseudocode for this phase is shown in Figure~\ref{fig:mbfq_p1}.  This phase
+calculates a new target rate for every VM, based on its recently-measured send
+rate ($SR$). Intuitively, if a VM is not fully using its allocated rate, we
+should offer the residual bandwidth to other VMs.  On the other hand, if the VM
+is indeed fully using its allocated rate, it may be able to use additional
+bandwidth. 
 
 We assume that a VM is fully utilizing is allocated bandwidth if $SR \geq
 0.95*AR$. The 5\% margin allows for small, unavoidable variations in the sending
-rate. 
+rate. To increase the bandwidth allocated to such a VM we need to strike a
+balance between two competing goals. First, we must minimize ``waste''-- just
+because we give additional bandwidth to a VM does not mean it will be able to
+use it. Second, a customers must be able to quickly ramp up to the bandwidth
+that they have paid for, if they are backlogged.
 
-To increase the bandwidth allocated to such a VM, we must strike a balance
-between two competing goals. First, we need to ensure that we do not ``waste''
-bandwidth -- just because we give additional bandwidth to a VM does not mean it
-will be able to use it. Second, we must ensure that a customers can indeed
-quickly ramp up to the bandwidth that they have paid for, if they genuinely need
-to. To this end, we use the following approach. 
+Our approach works as follows.  If, for a given VM, $SR \geq 0.95*AR$, we set
+$TR = 1.2*AR$.  If the VM qualifies again in the immediate next round, we set
+$TR = 1.5*AR$, and if it qualifies again, we set $TR = \max(2*AR, MG)$ -- i.e.
+if needed, we let it go to full minimum guaranteed bandwidth (or higher).  Thus,
+we are conservative in the first two rounds, but a customer with substantial
+pending demand is guaranteed to reach the minimum guaranteed bandwidth in three
+time intervals or less.
 
-If there is a VM, for which $SR \geq 0.95*AR$, we set its target rate to be 20\%
-higher than its currently allocated rate, i.e. $TR = 1.2*AR$.  If the VM
-qualifies again in the immediate next round, we set $TR = 1.5*AR$, and if it
-qualifies again, we set the target rate to be double the currently allocate d
-rate, or the minimum bandwidth guaranteed to this VM, which ever is higher --
-i.e. $TR = Max(2*AR, MG)$. 
+If, on the other hand, the VM is using less than 85\% of its allocated
+bandwidth, i.e. $SR \leq 0.85*AR$ for ten consecutive intervals (i.e. 1 second),
+we reduce the bandwidth allocated to this VM by setting $TR = 1.1*SR$. 
 
-Thus, we are conservative in the first two rounds, but a customer with
-substantial pending demand is guaranteed to reach the minimum guaranteed
-bandwidth in three time intervals or less.
-
-Let us now consider the VMs that are not fully using their allocated rate.  If
-the VM is using less than 85\% of its allocated bandwidth, i.e. $SR \leq
-0.85*AR$ for ten consecutive intervals (i.e. 1 second), we reduce the bandwidth
-allocated to this VM. We do so by simply setting the target rate to be 10\%
-higher than the current rate, i.e. $TR = 1.1*SR$. 
-
-The pseudocode is shown in Figure~\ref{fig:mbfq_p1}.
-
-The target rate for each VM can be thought of as a proxy for what the VM would
-desire if it were not subject to constraints like link bandwidth, and sharing
-with other VMs. We now discuss how the target rates are adjusted to take these
-constraints into account.
-
-{\bf Phase 2:  Preventing Congestion and Enforcing Fair Sharing:} 
-We now adjust the target rates to ensure that the link is not oversubscribed,
-and any leftover bandwidth is allocated in proportion to the VM's weights.
+{\bf Phase 2:  Preventing Congestion and Enforcing Fair Sharing:} The pseudocode
+for this phase is shown in Figure~\ref{fig:mbfq_p2}. Our goal is to adjust the
+target rates so that the link is not oversubscribed, and any leftover bandwidth
+is allocated in proportion to the VM's weights.
 
 We start by initializing each VM's allocated rate to be the minimum of its
 target rate and its guaranteed rates.  This initial allocation guarantees
-congestion freedom since by definition, the sum of the guaranteed rates cannot
-exceed the link bandwidth.  But it can leave bandwidth on the table, which we
-distribute among flows that may need it.
+congestion freedom since the sum of the guaranteed rates does not exceed the
+link bandwidth.  But it can leave bandwidth on the table.
 
-To distribute the "remaining" bandwidth, the algorithm marks the VMs whose
-target rates are more than their guaranteed rates as VMs that "need more
-bandwidth".  We allocate the remaining bandwidth to these needy VMs in
-proportion to their weights.  
+To distribute this "remaining" bandwidth, we mark the VMs whose target rates are
+more than their guaranteed rates as VMs that "need more bandwidth".  We allocate
+the remaining bandwidth to these needy VMs in proportion to their weights.  Note
+that this process must be iterative, since we may end up allocating a VM more
+than its target rate calculated in the first phase.  Since the target rate is
+our proxy for what the VM would desire in an ideal world without sharing, we
+remove this bandwidth and iterate again.  Note also that the process is
+guaranteed to terminate since at least one VM will be removed from the needy
+list in each iteration. In practice, the loop terminates within a few
+nanoseconds, even for 100s of VMs.
 
-Note that this process must be iterative, since we may end up allocating a VM
-more than its target rate calculated in the first phase.  Since, the target rate
-is our proxy for what the VM would desire in an ideal world without sharing, we
-remove this bandwidth and iterate again. 
-
-Note that the process is guaranteed to terminate since at least one VM will be
-removed from the needy list in each iteration. In practice, the loop terminates
-within a few nanoseconds, even for 100s of VMs.
-
-The pseudocode is shown in Figure~\ref{fig:mbfq_p2}.
