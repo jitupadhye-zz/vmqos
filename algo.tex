@@ -3,33 +3,108 @@
 
 \begin{figure}[t]
 {\footnotesize
-\begin{algorithmic}
-\State // later ...
-\end{algorithmic}
+\begin{tabular}{ | c | p{5cm} | }
+  \hline
+  \multicolumn{2}{|c|}{Notations} \\
+  \hline \hline
+  $BwToShare_{All}$ & The total bandwidth available to share among all VMs. This variable is
+	initialized to the link capacity. \\ \hline
+  $TotalWeights_{All}$ & The sum of weights for all VMs that want to share a particular
+	portion of the bandwidth.  For example, if there are 3 VMs with fair bandwidth sharing weights of
+        1, 3, and 4, $TotalWeights_{All}$ value would be the sum of their weights, which is 8.   
+        This variable is used during {\bf Phase 2} when the algorithm iteratively
+ 	allocates fair shares of the residual bandwidth to VMs that have not been given their fair shares. \\ \hline
+  $DemandCount_{All}$ & A variable to keep track of VMs that still want to be allocated more bandwidth. \\ \hline 
+  $SR_{VM}$ & The measured send rate of the VM during the previous $T$ seconds. \\ \hline
+  $AR_{VM}$ & The allocated rate for the VM in the last interval. \\ \hline
+  $TR_{VM}$ & The target rate for the VM, based on its $SR_{VM}$. \\ \hline
+  $RU_{VM}$ & The rampup state of the VM. This variable is used to keep track of how many consecutive
+	iterations the VM has been demanding for more bandwidth. The algorithm progressively gives more
+	additional bandwidth to the VM as this value goes up.  Conversely, the algorithm reduces the bandwidth
+	increases for a VM as the value goes down.  This concept is borrowed from the adjustment of TCP
+	congestion window. \\ \hline
+  $MG_{VM} $ & The minimum guarantee rate for this VM.  This is the VM's fair share of the link capacity in the 
+	case that all VMs demand more than their fair shares. \\ \hline
+  $NR_{VM}$ & The new rate being allocated to the VM in this iteration.  At the start of the calculation for this
+	interval, $NR_{VM}$ is capped at the VM's propotional share of the link capacity.  During {\bf Phase 2}, the
+	algorithm iteratively distributes any residual bandwidth to $NR_{VM}$ for VMs that have more demand.   \\ \hline
+  $BelowTR_{VM}$ & The variable to keep track of whether $NR_{VM}$ is still less than $TR_{VM}$. \\ \hline
+\end{tabular}
 }
-\caption{MBFQ notation and initialization}
+\caption{MBFQ notation}
 \label{fig:mbfq_init}
 \end{figure}
 
 \begin{figure}[t]
 {\footnotesize
-\begin{algorithmic}
-\State // later ...
+\begin{algorithmic}[1]
+\State $BwToShare_{All}$ =LinkCapacity
+\\
+\For{(each $VM$ sharing the link capacity)}
+\State $SR_{VM} \gets AverageSendRateInLastTSeconds$
+\If {($AR_{VM} = Disabled$)}
+\State $TR_{VM} \gets 1.1 \times SR_{VM}$
+\ElsIf {($SR_{VM} < 0.85 \times AR_{VM}$ for the last 1second)}
+\State $TR_{VM} \gets 1.1 \times SR_{VM}$ 
+\State $RU_{VM} \gets max(0, RU_{VM}-1)$
+\ElsIf {($SR_{VM} > 0.95 \times AR_{VM}$)}
+\State $RU_{VM} \gets min(3, RU_{VM} + 1)$
+\If {($RU_{VM}$ = 1)}
+\State $TR_{VM} \gets min(1.2 \times AR_{VM}, AR_{VM} + 0.1 \times LinkCapacity$)
+\ElsIf {($RU_{VM}$ = 2)}
+\State $TR_{VM} \gets min(1.5 \times AR_{VM}, AR_{VM} + 0.1 \times LinkCapacity)$
+\ElsIf {($RU_{VM}$ = 3)}
+\State $TR_{VM} \gets max(2 \times AR_{VM}, MG_{VM})$
+\EndIf
+\Else
+\State $TR_{VM} \gets AR_{VM}$
+\State $RU_{VM} \gets max(0, RU_{VM} - 1)$
+\EndIf
+\\
+\State $TR_{VM} \gets max(TR_{VM}, 10Mbps)$
+\State $NR_{VM} \gets min(TR_{VM}, MG_{VM})$
+\\
+\If {($NR_{VM} < TR_{VM}$)}
+\State $BelowTR_{VM} \gets true$
+\State $TotalWeights_{All} \gets TotalWeights_{All} + MG_{VM}$
+\State $DemandCount_{All} \gets DemandCount_{All} + 1$
+\Else
+\State $BelowTR_{VM} \gets false$
+\EndIf
+\\
+\State $BwToShare_{All} \gets BwToShare_{All} - NR_{VM}$
+\EndFor
 \end{algorithmic}
 }
-\caption{MBFQ Phase 1}
+\caption{MBFQ Phase 1- Compute  Target Rates}
 \label{fig:mbfq_p1}
 \end{figure}
 
 \begin{figure}[t]
 {\footnotesize
-\begin{algorithmic}
-\State // later ...
+\begin{algorithmic}[1]
+\While{($BwToShare_{All} > 0$ and $DemandCount_{All} \ne 0$)}
+\For{(each $VM$ sharing the network adapter)}
+\If {($BelowTR_{VM} = true$)}
+\State $FairShare_{VM} \gets BwToShare_{All} \times MG_{VM} \div TotalWeights_{All}$
+\State $NR_{VM} \gets NR_{VM} + FairShare_{VM}$
+\EndIf
+\\
+\If {($NR_{VM} \geq TR_{VM}$)}
+\State $BwToShare_{All} \gets BwToShare_{All} + (NR_{VM} - TR_{VM})$
+\State $NR_{VM} = TR_{VM}$
+\State $BelowTR_{VM} \gets false$
+\State $TotalWeights_{All} \gets TotalWeights_{All} - MG_{VM}$
+\State $DemandCount_{All} \gets DemandCount_{All} - 1$
+\EndIf
+\EndFor
+\EndWhile
 \end{algorithmic}
 }
-\caption{MBFQ Phase 2}
+\caption{MBFQ Phase 2 - Enforce Congestion Freedom and Fair Share}
 \label{fig:mbfq_p2}
 \end{figure}
+
 
 The MBFQ algorithm calculates rate allocation in two steps every $T$ seconds.
 First, we compute an ideal target rate ($TR$) for each VM, by comparing its
