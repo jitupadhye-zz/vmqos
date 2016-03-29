@@ -124,14 +124,15 @@ is indeed fully using its allocated rate, it may be able to use additional
 bandwidth. 
 
 We assume that a VM is fully utilizing is allocated bandwidth if $SR \geq
-0.95*AR$. The 5\% margin allows for small, unavoidable variations in the sending
+0.95*AR$ (line 10 in Figure~\ref{fig:mbfq_p1}). The 5\% margin allows for small, unavoidable variations in the sending
 rate. To increase the bandwidth allocated to such a VM we need to strike a
 balance between two competing goals. First, we must minimize ``waste''-- just
 because we give additional bandwidth to a VM does not mean it will be able to
 use it. Second, a customers must be able to quickly ramp up to the bandwidth
 that they have paid for, if they are backlogged.
 
-Our approach works as follows.  If, for a given VM, $SR \geq 0.95*AR$, we set
+Our approach works as follows (lines 11 - 17 in Figure~\ref{fig:mbfq_p1}).  
+If, for a given VM, $SR \geq 0.95*AR$, we set
 $TR = 1.2*AR$.  If the VM qualifies again in the immediate next round, we set
 $TR = 1.5*AR$, and if it qualifies again, we set $TR = \max(2*AR, MG)$ -- i.e.
 if needed, we let it go to full minimum guaranteed bandwidth (or higher).  Thus,
