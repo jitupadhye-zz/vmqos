@@ -1,16 +1,14 @@
 \begin{abstract}
-We wish to allocate bandwidth at a server among customer
-VMs proportional to the bandwidth purchased by each customer
-while allowing idle bandwidth to redistributed.  Classical fair queuing 
-in routers assumes tight feedback between transmitter and scheduler,
-and that cheap scheduler invocation on every transmission. Since these
-assumptions are false in Virtual Switches, we propose MBFQ
-(Measurement Based Fair Queuing) with two levels of scheduling:
-a microscheduler that operates cheaply and paces VM
-transmissions, and a macroscheduler that periodically redistributes
-tokens to microschedulers based on the measured
-bandwidth of VMs. We show that MBFQ allows a VM to obtain its allocated bandwidth in
-X scheduling intervals, and that idle bandwidth is reclaimed
-within Y periods. The MBFQ code previewed in Windows
+We wish to allocate outgoing bandwidth at a server among customer VMs. The
+allocation for each VM is proportional to the bandwidth purchased for that VM by
+the customer, while allowing idle bandwidth to redistributed.  Classical fair
+queuing in routers assumes tight feedback between transmitter and scheduler, and
+that cheap scheduler invocation on every transmission. Since these assumptions
+are false in Virtual Switches, we propose MBFQ (Measurement Based Fair Queuing)
+with two levels of scheduling: a microscheduler that operates cheaply and paces
+VM transmissions, and a macroscheduler that periodically redistributes tokens to
+microschedulers based on the measured bandwidth of VMs. We show that MBFQ allows
+a VM to obtain its allocated bandwidth in X scheduling intervals, and that idle
+bandwidth is reclaimed within Y periods. The MBFQ code previewed in Windows
 Server in Jan 2015.
 \end{abstract}
