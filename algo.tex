@@ -1,154 +1,156 @@
 \section{MBFQ Algorithm}
 \label{sec:algorithm}
 
-\begin{figure}[t]
+\begin{table}[t]
 {\footnotesize
 \begin{tabular}{ | c | p{6cm} | }
   \hline
   $C$ & The link capacity to share among VMs \\ \hline
   $AvailBw_{All}$ & Bandwidth available, initialized to $C$. \\ \hline
-  $Weights_{All}$ & Total weight of VMs that need bandwidth. \\ \hline
+  $W_{All}$ & Total weight of VMs that need bandwidth. \\ \hline
   $VmCount_{All}$ & Number of VMs that demand bandwidth. \\ \hline 
-  $SR_{VM}$ & The measured send rate of the VM. \\ \hline
-  $AR_{VM}$ & The current allocated rate for the VM. \\ \hline
-  $TR_{VM}$ & The target rate for the VM, based on its $SR_{VM}$. \\ \hline
-  $RU_{VM}$ & Consecutive iterations VM demands more bandwidth. \\ \hline
-  $MG_{VM} $ & The VM's fair share of $C$. \\ \hline
-  $NR_{VM}$ & New rate being allocated to the VM.   \\ \hline
-  $BelowTR_{VM}$ & Whether $NR_{VM}$ is less than $TR_{VM}$. \\ \hline
+  $SR_{i}$ & The measured send rate of the VM. \\ \hline
+  $AR_{i}$ & The current allocated rate for the VM. \\ \hline
+  $TR_{i}$ & The target rate for the VM, based on its $SR_{i}$. \\ \hline
+  $RU_{i}$ & Consecutive iterations VM demands more bandwidth. \\ \hline
+  $MG_{i} $ & The VM's fair share of $C$. \\ \hline
+  $NR_{i}$ & New rate being allocated to the VM.   \\ \hline
+  $BelowTR_{i}$ & Whether $NR_{i}$ is less than $TR_{i}$. \\ \hline
 \end{tabular}
 }
+\vspace{-1em}
 \caption{MBFQ notation}
-\label{fig:mbfq_init}
-\end{figure}
+\vspace{-1em}
+\label{table:mbfq_init}
+\end{table}
 
 \begin{figure}[t]
 {\footnotesize
 \begin{algorithmic}[1]
 \State $AvailBw_{All} \gets C$
-\\
 \For{(each $VM$ sharing the link capacity)}
-\State $SR_{VM} \gets AverageSendRateInLastTSeconds$
-\If {($AR_{VM} = Disabled$)}
-\State $TR_{VM} \gets 1.1 \times SR_{VM}$
-\ElsIf {($SR_{VM} < 0.85 \times AR_{VM}$ for the last 1second)}
-\State $TR_{VM} \gets 1.1 \times SR_{VM}$ 
-\State $RU_{VM} \gets max(0, RU_{VM}-1)$
-\ElsIf {($SR_{VM} > 0.95 \times AR_{VM}$)}
-\State $RU_{VM} \gets min(3, RU_{VM} + 1)$
-\If {($RU_{VM}$ = 1)}
-\State $TR_{VM} \gets min(1.2 \times AR_{VM}, AR_{VM} + 0.1 \times C$)
-\ElsIf {($RU_{VM}$ = 2)}
-\State $TR_{VM} \gets min(1.5 \times AR_{VM}, AR_{VM} + 0.1 \times C)$
-\ElsIf {($RU_{VM}$ = 3)}
-\State $TR_{VM} \gets max(2 \times AR_{VM}, MG_{VM})$
+\State $SR_{i} \gets AverageSendRateInLastTSeconds$
+\If {($AR_{i} = Disabled$)}
+\State $TR_{i} \gets 1.1 \times SR_{i}$
+\ElsIf {($SR_{i} < 0.85 \times AR_{i}$ for the last 1second)}
+\State $TR_{i} \gets 1.1 \times SR_{i}$ 
+\State $RU_{i} \gets max(0, RU_{i}-1)$
+\ElsIf {($SR_{i} > 0.95 \times AR_{i}$)}
+\State $RU_{i} \gets min(3, RU_{i} + 1)$
+\If {($RU_{i}$ = 1)}
+\State $TR_{i} \gets min(1.2 \times AR_{i}, AR_{i} + 0.1 \times C$)
+\ElsIf {($RU_{i}$ = 2)}
+\State $TR_{i} \gets min(1.5 \times AR_{i}, AR_{i} + 0.1 \times C)$
+\ElsIf {($RU_{i}$ = 3)}
+\State $TR_{i} \gets max(2 \times AR_{i}, MG_{i})$
 \EndIf
 \Else
-\State $TR_{VM} \gets AR_{VM}$
-\State $RU_{VM} \gets max(0, RU_{VM} - 1)$
+\State $TR_{i} \gets AR_{i}$
+\State $RU_{i} \gets max(0, RU_{i} - 1)$
 \EndIf
 \\
-\State $TR_{VM} \gets max(TR_{VM}, 10Mbps)$
-\State $NR_{VM} \gets min(TR_{VM}, MG_{VM})$
+\State $TR_{i} \gets max(TR_{i}, 10Mbps)$
+\State $NR_{i} \gets min(TR_{i}, MG_{i})$
 \\
-\If {($NR_{VM} < TR_{VM}$)}
-\State $BelowTR_{VM} \gets true$
-\State $Weights_{All} \gets Weights_{All} + MG_{VM}$
+\If {($NR_{i} < TR_{i}$)}
+\State $BelowTR_{i} \gets true$
+\State $W_{All} \gets W_{All} + MG_{i}$
 \State $VmCount_{All} \gets VmCount_{All} + 1$
 \Else
-\State $BelowTR_{VM} \gets false$
+\State $BelowTR_{i} \gets false$
 \EndIf
 \\
-\State $AvailBw_{All} \gets AvailBw_{All} - NR_{VM}$
+\State $AvailBw_{All} \gets AvailBw_{All} - NR_{i}$
 \EndFor
 \end{algorithmic}
 }
-\caption{MBFQ Phase 1- Compute  Target Rates}
+\vspace{-0.5em}
+\caption{MBFQ Phase 1}
 \label{fig:mbfq_p1}
+\vspace{-2em}
 \end{figure}
 
 \begin{figure}[t]
 {\footnotesize
 \begin{algorithmic}[1]
+\setalglineno{33} 
 \While{($AvailBw_{All} > 0$ and $VmCount_{All} \ne 0$)}
 \For{(each $VM$ sharing the network adapter)}
-\If {($BelowTR_{VM} = true$)}
-\State $FairShare_{VM} \gets AvailBw_{All} \times MG_{VM} \div Weights_{All}$
-\State $NR_{VM} \gets NR_{VM} + FairShare_{VM}$
+\If {($BelowTR_{i} = true$)}
+\State $FairShare_{i} \gets AvailBw_{All} \times MG_{i} \div W_{All}$
+\State $NR_{i} \gets NR_{i} + FairShare_{i}$
 \EndIf
 \\
-\If {($NR_{VM} \geq TR_{VM}$)}
-\State $AvailBw_{All} \gets AvailBw_{All} + (NR_{VM} - TR_{VM})$
-\State $NR_{VM} = TR_{VM}$
-\State $BelowTR_{VM} \gets false$
-\State $Weights_{All} \gets Weights_{All} - MG_{VM}$
+\If {($NR_{i} \geq TR_{i}$)}
+\State $AvailBw_{All} \gets AvailBw_{All} + (NR_{i} - TR_{i})$
+\State $NR_{i} = TR_{i}$
+\State $BelowTR_{i} \gets false$
+\State $W_{All} \gets W_{All} - MG_{i}$
 \State $VmCount_{All} \gets VmCount_{All} - 1$
 \EndIf
 \EndFor
 \EndWhile
 \end{algorithmic}
 }
-\caption{MBFQ Phase 2 - Enforce Congestion Freedom and Fair Share}
+\vspace{-0.5em}
+\caption{MBFQ Phase 2}
 \label{fig:mbfq_p2}
+\vspace{-1em}
 \end{figure}
 
-
-The MBFQ algorithm calculates rate allocation in two steps every $T$ seconds.
-First, we compute an ideal target rate ($TR$) for each VM, by comparing its
-measured send rate ($SR$) to the allocated rate ($AR$). $TR$ is a proxy for what
-the VM would desire if it were not subject to constraints like link bandwidth,
-and sharing with other VMs.  In the second phase, we adjust the $TR$ to ensure
-that the link is not oversubscribed and rates are allocated according to
-weights. These adjusted target rates then become the allocated rates.  Some
-notation and initialization of MBFQ is shown in Figure~\ref{fig:mbfq_init}. 
+See Table~\ref{tab:mbfq_init} for notation.  The MBFQ algorithm runs every $T$
+seconds. Rates are computed in two phases.  First, we compute an ideal target
+rate ($TR$) for each VM, by comparing its measured send rate ($SR$) to the
+allocated rate ($AR$). $TR$ is a proxy for what the VM would desire if it were
+not subject to constraints like link bandwidth, and sharing with other VMs.  In
+the second phase, we adjust the $TR$ to ensure that the link is not
+oversubscribed and rates are allocated according to weights. These adjusted
+target rates then become the allocated rates.
 
 {\bf Phase 1: Computing target rates:} 
-The pseudocode for this phase is shown in Figure~\ref{fig:mbfq_p1}.  This phase
-calculates a new target rate for every VM, based on its recently-measured send
-rate ($SR$). Intuitively, if a VM is not fully using its allocated rate, we
-should offer the residual bandwidth to other VMs.  On the other hand, if the VM
-is indeed fully using its allocated rate, it may be able to use additional
-bandwidth. 
+The pseudocode for phase 1 is shown in Figure~\ref{fig:mbfq_p1}. We calculate
+a new target rate for every VM, based on its recently-measured send rate ($SR$).
+Intuitively, if a VM is not fully using its allocated rate, we should offer the
+residual bandwidth to other VMs.  On the other hand, if the VM is indeed fully
+using its allocated rate, it may be able to use additional bandwidth. 
 
 We assume that a VM is fully utilizing is allocated bandwidth if $SR \geq
-0.95*AR$ (line 10 in Figure~\ref{fig:mbfq_p1}). The 5\% margin allows for small, unavoidable variations in the sending
-rate. To increase the bandwidth allocated to such a VM we need to strike a
-balance between two competing goals. First, we must minimize ``waste''-- just
-because we give additional bandwidth to a VM does not mean it will be able to
-use it. Second, a customers must be able to quickly ramp up to the bandwidth
-that they have paid for, if they are backlogged.
+0.95*AR$ (line 9). The 5\% margin allows for small, unavoidable variations in
+the sending rate. To increase the bandwidth allocated to such a VM we need to
+strike a balance between two competing goals. First, we must minimize
+``waste''-- the VM may not be able to use the addional bandwidth that we give
+it.  Second, customers must be able to quickly ramp up to the bandwidth that
+they have paid for, if they are backlogged.
 
-Our approach works as follows (lines 11 - 17 in Figure~\ref{fig:mbfq_p1}).  
-If, for a given VM, $SR \geq 0.95*AR$, we set
-$TR = 1.2*AR$.  If the VM qualifies again in the immediate next round, we set
-$TR = 1.5*AR$, and if it qualifies again, we set $TR = \max(2*AR, MG)$ -- i.e.
-if needed, we let it go to full minimum guaranteed bandwidth (or higher).  Thus,
-we are conservative in the first two rounds, but a customer with substantial
-pending demand is guaranteed to reach the minimum guaranteed bandwidth in three
-time intervals or less.
+Our approach works as follows (lines 10 - 16).  If, for a given VM, $SR \geq
+0.95*AR$, we set $TR = 1.2*AR$.  If the VM qualifies again in the immediate next
+round, we set $TR = 1.5*AR$, and if it qualifies again, we set $TR = \max(2*AR,
+MG)$ -- i.e.  if needed, we let it go to full minimum guaranteed bandwidth (or
+higher).  Thus, we are conservative in the first two rounds, but a customer with
+substantial pending demand is guaranteed to reach the minimum guaranteed
+bandwidth in three time intervals or less.
 
 If, on the other hand, the VM is using less than 85\% of its allocated
 bandwidth, i.e. $SR \leq 0.85*AR$ for ten consecutive intervals (i.e. 1 second),
 we reduce the bandwidth allocated to this VM by setting $TR = 1.1*SR$. 
 
 {\bf Phase 2:  Preventing Congestion and Enforcing Fair Sharing:} The pseudocode
-for this phase is shown in Figure~\ref{fig:mbfq_p2}. Our goal is to adjust the
+for phase 2 is shown in Figure~\ref{fig:mbfq_p2}. Our goal is to adjust the
 target rates so that the link is not oversubscribed, and any leftover bandwidth
 is allocated in proportion to the VM's weights.
 
-We start by initializing each VM's allocated rate to be the minimum of its
-target rate and its guaranteed rates.  This initial allocation guarantees
-congestion freedom since the sum of the guaranteed rates does not exceed the
-link bandwidth.  But it can leave bandwidth on the table.
+We start by initializing each VM's allocated rate to be the minimum of its $TR$
+and its guaranteed rate ($MG$).  This guarantees congestion freedom since the
+sum of the $MG$ does not exceed the link bandwidth.  But it can leave bandwidth
+on the table.
 
-To distribute this "remaining" bandwidth, we mark the VMs whose target rates are
-more than their guaranteed rates as VMs that "need more bandwidth".  We allocate
-the remaining bandwidth to these needy VMs in proportion to their weights.  Note
-that this process must be iterative, since we may end up allocating a VM more
-than its target rate calculated in the first phase.  Since the target rate is
-our proxy for what the VM would desire in an ideal world without sharing, we
-remove this bandwidth and iterate again.  Note also that the process is
-guaranteed to terminate since at least one VM will be removed from the needy
-list in each iteration. In practice, the loop terminates within a few
-nanoseconds, even for 100s of VMs.
+We distribute this "remaining" bandwidth among ``needy'' VMs (those whose target
+rates are more than their guaranteed rates), in proportion to their weights.
+This process must be iterative, since we may end up allocating a VM more than
+its target rate calculated in the first phase.  Since the target rate is our
+proxy for what the VM would desire in an ideal world without sharing, we remove
+this bandwidth and iterate again.  Note also that the process is guaranteed to
+terminate since at least one VM will be removed from the needy list in each
+iteration. In practice, the loop terminates within a few nanoseconds, even for
+100s of VMs.
 

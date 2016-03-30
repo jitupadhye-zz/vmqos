@@ -1,14 +1,13 @@
 \section{Model}
 \label{sec:model}
-We now describe our model in more detail.  Given input bandwidths $IB_i$ with
-weights $W_i$ for all clients, we seek to allocate bandwidths $AB_i$ for each
-client such that:  
+We seek to allocate the outbound link bandwidth among client VMs, to ensure:  
 
 {\bf 1. Congestion Freedom:}  The sum of the allocated bandwidths does not
 exceed the outbound link bandwidth.
 
-{\bf 2. Strong Fair Allocation: } $B$ is divided among active clients in proportion
-to their weights $W_i$.
+{\bf 2. Strong Fair Allocation: } The bandwidth is divided among clients in
+proportion to their weights, not exceeding their demand. Leftover bandwidth is
+dividied proportionally.
 
 \begin{figure*}[t]
 \center
@@ -26,8 +25,10 @@ to their weights $W_i$.
 \includegraphics[width=0.3\textwidth, trim=6mm 90mm 20mm 10mm]{figures/macroschedule}
 \label{fig:macroscheduler}
 }
+\vspace{-0.2em}
 \caption{Scheduling models}
 \label{fig:sched_mod}
+\vspace{-0.5em}
 \end{figure*}
 
 Classical fair queuing model (Figure~\ref{fig:qosmodel}) used by algorithms such
@@ -47,11 +48,11 @@ NIC could invoke the scheduler on a per-packet basis, the cost of running the
 scheduler after every packet departure will be prohibitive. It typically takes
 at least one full core to saturate a 40Gbps link. 
 
-Note that implementations of weighted fair queuing algorithms like
-QFQ~\cite{qfq} solve this problem by using technologies such as DPDK~\cite{dpdk}
-or NetMap~\cite{netmap}, that allow them to essentially bypass the NIC batching.
-This is not feasible in our scenario. For fine-grained scheduling, they also
-require more CPU cycles than we can afford to spend.
+Implementations of weighted fair queuing algorithms like QFQ~\cite{qfq} solve
+this problem by using technologies such as DPDK~\cite{dpdk} or
+NetMap~\cite{netmap}, that allow them to bypass the NIC batching.  This is not
+feasible in our scenario. For fine-grained scheduling, they also require more
+CPU cycles than we can afford to spend.
  
 We must also consider another subtle issue.  The software entity that
 schedules packets from the queues must ensure that packets are en-queued to the
