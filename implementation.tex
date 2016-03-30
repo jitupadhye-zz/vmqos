@@ -1,4 +1,4 @@
-\section{Windows Implementation}
+\section{Implementation}
 \label{sec:implementation}
 
 MBFQ is implemented in Windows as a Hyper-V Virtual Switch Extension, which is an NDIS 
@@ -6,7 +6,7 @@ lightweight filter (LWF) driver.
 
 Like other Windows LWF drivers, MBFQ implements a $FILTER\_SEND\_NET\_BUFFER\_LIST$ function
 through which it receives outgoing packets from the upper stack, and sends packets that conform
-to their respective microschedulers to the lower stack throught the standard $NdisFSendNetBufferLists$
+to their respective microschedulers to the lower stack through the standard $NdisFSendNetBufferLists$
 function call.  MBFQ implementation is completely abstracted from the application above, and the underlying 
 hardware.  The only information from hardware that MBFQ uses is the standard NDIS status indication
 $NDIS\_STATUS\_LINK\_STATE$, to determine the link capacity of the underlying network adapter.
