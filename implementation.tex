@@ -1,6 +1,17 @@
 \section{Windows Implementation}
 \label{sec:implementation}
 
-One of the goals for implementing MBFQ is to provide a lightweight, hardware-agnostic implementation of WFQ.
-MBFQ is implemented as a Hyper-V Virtual Switch Extension, which is an NDIS lightweight filter driver (LWF).
+MBFQ is implemented in Windows as a Hyper-V Virtual Switch Extension, which is an NDIS 
+lightweight filter (LWF) driver.
+
+Like other Windows LWF drivers, MBFQ implements a $FILTER\_SEND\_NET\_BUFFER\_LIST$ function
+through which it receives outgoing packets from the upper stack, and sends packets that conform
+to their respective microschedulers to the lower stack throught the standard $NdisFSendNetBufferLists$
+function call.  MBFQ implementation is completely abstracted from the application above, and the underlying 
+hardware.  The only information from hardware that MBFQ uses is the standard NDIS status indication
+$NDIS\_STATUS\_LINK\_STATE$, to determine the link capacity of the underlying network adapter.
+
+Within the MBFQ filter driver, the microschedulers are implemented as token buckets, whose rates are
+periodically adjusted by the macroscheduler.
+
 
