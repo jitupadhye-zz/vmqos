@@ -89,7 +89,7 @@ fair queuing models made (namely the scheduler can keep up with link speed) if t
  is invoked on a per-packet basis.  Signaling events across processors on a per-packet basis is prohibitively expensive.
 For example, in Figure~\ref{completesburst}, transmission completes can occur on the order of
 nanoseconds.  Signaling a scheduler at that granularity would require the CPU to spend
-most of its time doing the signaling. leaving little cycles left for packet processing.  
+most of its time doing the signaling, leaving little cycles left for packet processing.  
 It typically takes at least one dedicated core to saturate a 40Gbps link. 
 
 Our solution is to divide the scheduler into two entities as shown in
