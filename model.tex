@@ -53,9 +53,10 @@ software implementation will receive transmit completion notifications in
 bursts. Firgure~\ref{completesburst} shows the distribution of transmit-complete
 notifications for a random 1000 contiguous samples, for three different traffic patterns.
 The figure shows that the size of each notification can be on the order
-of 500 kilobytes, and they can be microseconds (10000 ticks at 2.6GHz) apart. This causes transmit
+of 500 kilobytes, and they can be microseconds (10000 ticks at 2.6GHz) apart. If
+we run DRR under such conditions, it would cause transmit
 jitters and packet drops, which coupled with upper-layer throttling such as the TCP
-stack, further excacerbates the issue.  Firgure~\ref{completesburst} also shows that 
+stack, will further excacerbate the issue.  Firgure~\ref{completesburst} also shows that 
 the distribution depends on the traffic pattern. Thus, the scheduler cannot
 simply be tuned to respond to a certain distribution.
 
