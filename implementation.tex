@@ -7,9 +7,9 @@ Server 2016.
 which is an NDIS lightweight filter (LWF) driver.
 
 Like other Windows LWF drivers, MBFQ uses a standard NDIS API to receive outgoing packets
-from the upper stack, schedule them with its internal microschedulers and macroscheduler, and 
+from the upper stack and 
 sends conformed packets to the lower stack through another standard NDIS API.
-Thus, MBFQ implementation is completely abstracted from the application above, and the 
+Thus, MBFQ implementation is completely abstracted from the application above and the 
 hardware below.  The only information from hardware that MBFQ receives is a standard NDIS API 
 for receiving link state status to determine the link capacity of the underlying network adapter.
 
@@ -23,7 +23,7 @@ If the network adapter is near its link capacity, the macroscheduler computes an
 transmit rates to the microschedulers according to the pseudocode shown in  
 Figure~\ref{fig:mbfq_p1} and Figure~\ref{fig:mbfq_p2}.
 
-{\bf The microscheduler}: The microschedulers are implemented as token buckets, whose rates are
+{\bf The microschedulers}: The microschedulers are implemented as token buckets, whose rates are
 periodically adjusted by the macroscheduler. Because the microschedulers operate independently from
 the macroscheduler on a per-packet basis, it is fairly straightforward to enable each microscheduler to 
 schedule packets across multiple processors, using per-processor sub-queues that share a common 
