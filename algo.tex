@@ -98,7 +98,7 @@
 \vspace{-1em}
 \end{figure}
 
-See Table~\ref{tab:mbfq_init} for notation.  The MBFQ algorithm runs every $T$
+See Table~\ref{table:mbfq_init} for notation.  The MBFQ algorithm runs every $T$
 seconds. Rates are computed in two phases.  First, we compute an ideal target
 rate ($TR$) for each VM, by comparing its measured send rate ($SR$) to the
 allocated rate ($AR$). $TR$ is a proxy for what the VM would desire if it were
@@ -139,8 +139,11 @@ for phase 2 is shown in Figure~\ref{fig:mbfq_p2}. Our goal is to adjust the
 target rates so that the link is not oversubscribed, and any leftover bandwidth
 is allocated in proportion to the VM's weights.
 
-We start by initializing each VM's allocated rate to be the minimum of its $TR$
-and its guaranteed rate ($MG$).  This guarantees congestion freedom since the
+We start by initializing each VM's allocated rate ($AR$) to be the minimum of its 
+target rate ($TR$)
+and its guaranteed rate ($MG$) (line 22  in Figure~\ref{fig:mbfq_p1}) .  A VM's
+guaranteed rate is its share of the link capacity, proportional to the VM's weight.
+This guarantees congestion freedom since the
 sum of the $MG$ does not exceed the link bandwidth.  But it can leave bandwidth
 on the table.
 
