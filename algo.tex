@@ -8,12 +8,13 @@
   $C$ & The link capacity to share among VMs \\ \hline
   $AvailBw_{All}$ & Bandwidth available, initialized to $C$. \\ \hline
   $W_{All}$ & Total weight of VMs that need bandwidth. \\ \hline
-  $VmCount_{All}$ & Number of VMs that demand bandwidth. \\ \hline 
+  $VmCount_{All}$ & Number of VMs that need bandwidth. \\ \hline 
   $SR_{i}$ & The measured send rate of the VM. \\ \hline
   $AR_{i}$ & The current allocated rate for the VM. \\ \hline
   $TR_{i}$ & The target rate for the VM, based on its $SR_{i}$. \\ \hline
-  $RU_{i}$ & Consecutive iterations VM demands more bandwidth. \\ \hline
-  $MG_{i} $ & The VM's fair share of $C$. \\ \hline
+  $RU_{i}$ & Consecutive iterations VM needs bandwidth. \\ \hline
+  $MG_{i}$ & The VM's minimum bandwidth guarantee. \\ \hline
+  $W_{i}$ & The VM's weight, the ratio of $MG_{i}$ to $C$. \\ \hline
   $NR_{i}$ & New rate being allocated to the VM.   \\ \hline
   $BelowTR_{i}$ & Whether $NR_{i}$ is less than $TR_{i}$. \\ \hline
 \end{tabular}
@@ -32,7 +33,7 @@
 \State $SR_{i} \gets AverageSendRateInLastTSeconds$
 \If {($AR_{i} = Disabled$)}
 \State $TR_{i} \gets 1.1 \times SR_{i}$
-\ElsIf {($SR_{i} < 0.85 \times AR_{i}$ for the last 1second)}
+\ElsIf {($SR_{i} < 0.85 \times AR_{i}$ for the last 500 msec)}
 \State $TR_{i} \gets 1.1 \times SR_{i}$ 
 \State $RU_{i} \gets max(0, RU_{i}-1)$
 \ElsIf {($SR_{i} > 0.95 \times AR_{i}$)}
@@ -54,7 +55,7 @@
 \\
 \If {($NR_{i} < TR_{i}$)}
 \State $BelowTR_{i} \gets true$
-\State $W_{All} \gets W_{All} + MG_{i}$
+\State $W_{All} \gets W_{All} + W_{i}$
 \State $VmCount_{All} \gets VmCount_{All} + 1$
 \Else
 \State $BelowTR_{i} \gets false$
@@ -77,7 +78,7 @@
 \While{($AvailBw_{All} > 0$ and $VmCount_{All} \ne 0$)}
 \For{(each $VM$ sharing the network adapter)}
 \If {($BelowTR_{i} = true$)}
-\State $FairShare_{i} \gets AvailBw_{All} \times MG_{i} \div W_{All}$
+\State $FairShare_{i} \gets AvailBw_{All} \times W_{i} \div W_{All}$
 \State $NR_{i} \gets NR_{i} + FairShare_{i}$
 \EndIf
 \\
@@ -85,7 +86,7 @@
 \State $AvailBw_{All} \gets AvailBw_{All} + (NR_{i} - TR_{i})$
 \State $NR_{i} = TR_{i}$
 \State $BelowTR_{i} \gets false$
-\State $W_{All} \gets W_{All} - MG_{i}$
+\State $W_{All} \gets W_{All} - W_{i}$
 \State $VmCount_{All} \gets VmCount_{All} - 1$
 \EndIf
 \EndFor
@@ -137,8 +138,7 @@ we reduce the bandwidth allocated to this VM by setting $TR = 1.1*SR$.
 {\bf Phase 2:  Preventing Congestion and Enforcing Fair Sharing:} The pseudocode
 for phase 2 is shown in Figure~\ref{fig:mbfq_p2}. Our goal is to adjust the
 allocated rates so that the link is not oversubscribed, and any leftover bandwidth
-is allocated in proportion to the VM's weights.  The weight of a VM is the ratio of
-its mininum bandwidth guarantee to the link capacity.
+is allocated in proportion to the VMs' weights.
 
 We start by initializing each VM's allocated rate ($AR$) to be the minimum of its 
 target rate ($TR$)
