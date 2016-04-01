@@ -98,7 +98,7 @@
 \vspace{-1em}
 \end{figure}
 
-See Table~\ref{table:mbfq_init} for notation.  The MBFQ algorithm runs every $T$
+See Table~\ref{tab:mbfq_init} for notation.  The MBFQ algorithm runs every $T$
 seconds. Rates are computed in two phases.  First, we compute an ideal target
 rate ($TR$) for each VM, by comparing its measured send rate ($SR$) to the
 allocated rate ($AR$). $TR$ is a proxy for what the VM would desire if it were
@@ -131,18 +131,18 @@ substantial pending demand is guaranteed to reach the minimum guaranteed
 bandwidth in three time intervals or less.
 
 If, on the other hand, the VM is using less than 85\% of its allocated
-bandwidth, i.e. $SR \leq 0.85*AR$ for ten consecutive intervals (i.e. 1 second),
+bandwidth, i.e. $SR \leq 0.85*AR$ for five consecutive intervals (i.e. 500 milliseconds),
 we reduce the bandwidth allocated to this VM by setting $TR = 1.1*SR$. 
 
 {\bf Phase 2:  Preventing Congestion and Enforcing Fair Sharing:} The pseudocode
 for phase 2 is shown in Figure~\ref{fig:mbfq_p2}. Our goal is to adjust the
-target rates so that the link is not oversubscribed, and any leftover bandwidth
-is allocated in proportion to the VM's weights.
+allocated rates so that the link is not oversubscribed, and any leftover bandwidth
+is allocated in proportion to the VM's weights.  The weight of a VM is the ratio of
+its mininum bandwidth guarantee to the link capacity.
 
 We start by initializing each VM's allocated rate ($AR$) to be the minimum of its 
 target rate ($TR$)
-and its guaranteed rate ($MG$) (line 22  in Figure~\ref{fig:mbfq_p1}) .  A VM's
-guaranteed rate is its share of the link capacity, proportional to the VM's weight.
+and its guaranteed rate ($MG$) (line 22  in Figure~\ref{fig:mbfq_p1}) .  
 This guarantees congestion freedom since the
 sum of the $MG$ does not exceed the link bandwidth.  But it can leave bandwidth
 on the table.
@@ -156,6 +156,3 @@ this bandwidth and iterate again.  Note also that the process is guaranteed to
 terminate since at least one VM will be removed from the needy list in each
 iteration. In practice, the loop terminates within a few nanoseconds, even for
 100s of VMs.
-
-\fixme{Somewhere in this section or next, we need to mention that weight of a VM
-is ratio of min gurantee to link bandwidth. This point is completley missing.}

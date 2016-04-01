@@ -4,7 +4,7 @@ In this section, we briefly discuss the implementation of key components of MBFQ
 Server 2016.
 
 {\bf Binary location}: MBFQ is implemented in Windows as a Hyper-V Virtual Switch Extension, 
-which is an NDIS lightweight filter (LWF) driver.
+which is an NDIS light-weight filter (LWF) driver.
 
 Like other Windows LWF drivers, MBFQ uses a standard NDIS API to receive outgoing packets
 from the upper stack and 
@@ -24,10 +24,9 @@ transmit rates to the microschedulers according to the pseudocode shown in
 Figure~\ref{fig:mbfq_p1} and Figure~\ref{fig:mbfq_p2}.
 
 {\bf The microschedulers}: The microschedulers are implemented as token buckets, whose rates are
-periodically adjusted by the macroscheduler. Because the microschedulers operate independently from
-the macroscheduler on a per-packet basis, it is fairly straightforward to enable each microscheduler to 
-schedule packets across multiple processors, using per-processor sub-queues that share a common 
-token bucket. This provides a fully distributed fair bandwidth queuing implementation where packets can remain
-on the same processor from the application layer all the way to the hardware transmit buffer.
+periodically adjusted by the macroscheduler.  Each microscheduler can schedule packets across 
+multiple processors, using per-processor sub-queues that share a common token bucket. 
+This provides a fully distributed weighted fair queuing implementation where packets can remain
+on the same processor from the application layer to the NIC's transmit buffer.
 
 

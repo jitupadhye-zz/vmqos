@@ -1,1 +1,13 @@
 \section{Conclusion}
+\label{sec:conclusion}
+
+We presented MBFQ, a measurement-based fair queuing model for allocating bandwidth to virtual machines.
+MBFQ is a two-tier scheduling model that is scalable across multiple processors.  MBFQ provides weighted
+fairness among virtual machines without any specific knowledge of the NIC.  Our implementation 
+of MBFQ in Windows is a standard NDIS filter driver that can reside in any part of the networking stack.  Our evaluation
+on Windows Server 2016 shows that MBFQ can allocate fair bandwith sharing among VMs of different weights. It
+responds quickly to changes in bandwidth demands among VMs with minimum CPU overhead.  An implementation of 
+MBFQ is available with Windows Server 2016 Technical Preview.
+
+
+

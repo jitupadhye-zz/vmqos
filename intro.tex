@@ -3,7 +3,7 @@
 In this paper, we revisit the age-old problem of weighted fair
 allocation of bandwidth among competing ``flows''. Why do we need a new solution
 for such a well-studied problem? The reason is that the new context and
-requirements caused by {\em software implementation} in a{\em virtualized cloud}
+requirements caused by {\em software implementation} in a {\em virtualized cloud}
 both demand and allow a simple and CPU-efficient solution. 
 
 Fair bandwidth allocation has typically been studied in the context of a router.
@@ -19,7 +19,7 @@ handling the expected workload because the CPU (switch hardware) was dedicated
 to scheduling.
 
 Our context is quite different. We want to build a packet scheduler for Windows
-hypervisor that ensures that VMs hosted on a single server share outgoing
+Hyper-V Virtual Switch that ensures that VMs hosted on a single server share outgoing
 bandwidth in proportion to specified weights. Customized versions of this
 Vswitch powers Azure, and many large private corporate clouds. Our context
 implies:
@@ -43,7 +43,7 @@ significant processing {\em on every sent packet}.
 
 \noindent {\bf Fine-grained guarantees unnecessary:} Public and private cloud providers typically host 
 less than 100 VMs per physical server, and provide only coarse per-VM bandwidth guarantees
-determined by the pricing tier.  A granularity of 1 Gbps typically suffices.  Fine-grained, per-flow bandwidth is neither
+determined by the pricing tier.  A granularity of 1 Mbps typically suffices.  Fine-grained, per-flow bandwidth is neither
 used nor demanded by the customers, since application-layer issues often have
 far more impact on throughput.
 
@@ -53,11 +53,11 @@ bandwidth roughly proportionally among backlogged VMs.
 
 We designed a packet scheduler to provide roughly proportional bandwidth sharing
 with  minimum CPU overhead by refactoring scheduling into two parts: a {\em
-microscheduler} that controls the send rate of a VM using a leaky bucket,
+microscheduler} that controls the send rate of a VM using a token bucket,
 and a {\em macroscheduler} that periodically allocates tokens to each
 microscheduler based on VM bandwidth usage.  Coordination costs are small and
-limited to the macroscheduler that runs once every scheduling period $T$ (say 10
-msec); by contrast, each microscheduler can run in a separate thread/core
+limited to the macroscheduler that runs once every scheduling period $T$ (say 100
+milliseconds); by contrast, each microscheduler can run in a separate thread/core
 allowing scaling to 40 Gbps of overall transmit bandwidth with little CPU
 overhead, as we demonstrate in Section~\ref{sec:experiments}.
 

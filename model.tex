@@ -53,7 +53,7 @@ software implementation will receive transmit completion notifications in
 bursts. Firgure~\ref{completesburst} shows the distribution of transmit-complete
 notifications for a random 1000 contiguous samples, for three different traffic patterns.
 The figure shows that the size of each notification can be on the order
-of 500 kilobytes, and they can be microseconds (10000 ticks at 2.6GHz) apart. If
+of 500 kilobytes, and they can be microseconds (10000 ticks) apart. If
 we run DRR under such conditions, it would cause transmit
 jitters and packet drops, which coupled with upper-layer throttling such as the TCP
 stack, will further excacerbate the issue.  Firgure~\ref{completesburst} also shows that 
@@ -98,7 +98,7 @@ Figure~\ref{fig:macroscheduler}.   The macroscheduler runs only every $T$
 seconds and hence can run on a single thread.   The microschedulers, by
 contrast, run on every packet based on tokens allocated by the microscheduler.   
 
-While this model reduces overhead it has obvious drawbacks because allocations
+While this model reduces overhead, it has obvious drawbacks because allocations
 can only occur in units of $T$ seconds.   Thus we have two measures $T_{inc}$
 which defines the worst case time for a VM to increase to its guaranteed
 bandwidth, and $T_{dec}$ which is the worst case time after a VM decreses below
