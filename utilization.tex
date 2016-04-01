@@ -1,0 +1,14 @@
+\section{CPU Utilization}
+\label{sec:utilization}
+
+We measure the CPU overhead of MBFQ for the setup in Section~\ref{sec:fairshare}
+by comparing the CPU utilization of that setup to the CPU utilization of a base scenario
+without MBFQ.  
+
+For the base scenario, we assign static rate limits to VM1, VM2, VM3, and VM4 with 
+226Mbps, 226Mbps, 2.26Gbps, 
+and 6.79Gbps respectively.  These are the rates that MBFQ dynamically distributes  to
+the VMs when all VMs are active.
+
+With all VMs active, the CPU utilization of the base scenario is 22.74\%, and CPU utilization
+for the MBFQ setup is 23.22\%. This shows that MBFQ has minimum CPU overhead.
