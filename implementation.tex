@@ -3,30 +3,30 @@
 In this section, we briefly discuss the implementation of key components of MBFQ in Windows
 Server 2016.
 
-{\bf Binary location}: MBFQ is implemented in Windows as a Hyper-V Virtual Switch Extension, 
-which is an NDIS light-weight filter (LWF) driver.
+{\bf Binary location}: MBFQ is implemented in Windows as a Hyper-V Virtual
+Switch Extension, which is an NDIS light-weight filter (LWF) driver~\cite{fd}.
 
-Like other Windows LWF drivers, MBFQ uses a standard NDIS API to receive outgoing packets
-from the upper stack and 
-sends conformed packets to the lower stack through another standard NDIS API.
-Thus, MBFQ implementation is completely abstracted from the application above and the 
-hardware below.  The only information from hardware that MBFQ receives is a standard NDIS API 
-for receiving link state status to determine the link capacity of the underlying network adapter.
+Like other LWF drivers, MBFQ uses a standard NDIS API to receive outgoing
+packets from the upper stack and sends conformed packets to the lower stack
+through another standard NDIS API.  MBFQ implementation is completely abstracted
+from the application above and the hardware below.  The only information from
+hardware that MBFQ receives is a standard NDIS API for receiving link state
+status to determine the link capacity of the underlying network adapter.
 
-{\bf The macroscheduler}: MBFQ uses a timer to invoke the macroscheduler every 100 milliseconds.
-If outgoing traffic to the network adapter does not exceed 80\% of the link capacity, the
-macroscheduler deactivates the microschedulers (if they have not already been deactivated), and
-immediately returns.  Thus, when the network adapter is not near its link capacity, which is the case
-for most of the time in data centers, outgoing traffic is not throttled, and MBFQ uses minimal CPU.
+{\bf The macroscheduler}: MBFQ uses a timer to invoke the macroscheduler every
+100 milliseconds. if the network adapter utilization is below 80\% the
+macroscheduler deactivates the microschedulers (if they have not already been
+deactivated), and immediately returns.  Thus, when the link utilization is low,
+which is the common case in data centers~\cite{fb,kandula09}, outgoing traffic
+is not throttled, and MBFQ uses minimal CPU.  If the link utilization is above
+80\%, the macroscheduler computes and distributes the transmit rates to the
+microschedulers as discussed earlier.
 
-If the network adapter is near its link capacity, the macroscheduler computes and distributes the
-transmit rates to the microschedulers according to the pseudocode shown in  
-Figure~\ref{fig:mbfq_p1} and Figure~\ref{fig:mbfq_p2}.
-
-{\bf The microschedulers}: The microschedulers are implemented as token buckets, whose rates are
-periodically adjusted by the macroscheduler.  Each microscheduler can schedule packets across 
-multiple processors, using per-processor sub-queues that share a common token bucket. 
-This provides a fully distributed weighted fair queuing implementation where packets can remain
+{\bf The microschedulers}: The microschedulers are implemented as token buckets,
+whose rates are periodically adjusted by the macroscheduler.  Each
+microscheduler can schedule packets across multiple processors, using
+per-processor sub-queues that share a common token bucket.  This provides a
+fully distributed weighted fair queuing implementation where packets can remain
 on the same processor from the application layer to the NIC's transmit buffer.
 
 

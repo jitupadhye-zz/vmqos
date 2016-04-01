@@ -8,8 +8,8 @@ hyper-threading enabled, which gives it 8 logical processors.  Each machine has
 8GB of RAM and 10G NIC.  Both machines run a flavor of Windows Server OS with
 Hyper-V enabled for network virtualization. This configuration emulates our
 common use case: VMs communicating with other VMs in the same data
-center.~\footnote{Most of the traffic in modern data centers is intra-DC
-traffic~\cite{fb,cosmos}.} \fixme{invalid ref}
+center.~\footnote{In modern data centers, most traffic is
+intra-DC~\cite{fb,kandula09}.} 
 
 \subsection{Picking a Timer Period for Measurement}
 {\bf Question:}  The macrosheduler runs every $T$ time units. What is the right
@@ -85,12 +85,11 @@ throttles VM1 and VM2 to 792Mbps each, while VM3 is allowed to use 7.92Gbps.
 get their weighted fair share: VM1 and VM2 get 226Mbps, VM3
 gets 2.26Gbps and VM4 gets 6.79Gbps. 
 
-{\bf  Phase 4:} At time 189, we change the min bandwidth guarantee of VM1 from 100Mbps to
-1Gbps. MBFQ allocation quickly converges to the expected rates: VM1 and VM3
-now both transmit at the same rate, and the rates of VM2, VM3, and VM4 were reduced
-to accommodate the increase in VM1's rate.
+{\bf  Phase 4:} At time 189, we change the min bandwidth guarantee of VM1 from
+100Mbps to 1Gbps. VM1 and VM3 now both transmit at the same rate, and the rates
+of VM2, VM3, and VM4 were reduced to accommodate the increase in VM1's rate.
 
-{\bf Phase 5:} At time 249, VM1, VM3, and VM4 stop sending. VM2 quickly
+{\bf Phase 5:} At time 249, VM1, VM3, and VM4 stop sending. VM2
 ramps up to consume the full link bandwidth.
 
 {\bf Discussion:} We see that while MBFQ generally performs well, there are dips
@@ -189,11 +188,25 @@ the last 1000ms)
 \end{figure}
 
 Figure~\ref{rampdowntime1} shows that the bandwidth stays roughly the same with
-MBFQ and without MBFQ with a reclaim timer of 500 msec (in fact 1000 msec looks
-even worse, but that could be an artifact).   On the other
+MBFQ and without MBFQ with a reclaim timer of 500 or 1000 msec. On the other
 hand,Figure~\ref{rampdowntime2} shows that with instantaneous reclaiming
 (reclaim timer of 0) the bandwidth allocated to the VM is significantly affected
-(by around 50\%) and its noticeable even at a reclaim timer of 200 msec.
+and its noticeable even at a reclaim timer of 200 msec.
 
-{\bf Conclusion:}  A reclaim timer of around 500 milliseconds seems like a good
+{\bf Conclusion:}  A reclaim timer of 500 milliseconds was chosen as a 
 compromise. 
+
+\subsection{CPU Utilization}
+\label{sec:utilization}
+
+We measure the CPU overhead of MBFQ for the setup in Section~\ref{sec:fairshare}
+by comparing the CPU utilization of that setup to the CPU utilization of a base scenario
+without MBFQ.  
+
+For the base scenario, we assign static rate limits to VM1, VM2, VM3, and VM4 with 
+226Mbps, 226Mbps, 2.26Gbps, 
+and 6.79Gbps respectively.  These are the rates that MBFQ dynamically distributes  to
+the VMs when all VMs are active.
+
+With all VMs active, the CPU utilization of the base scenario is 22.74\%, and CPU utilization
+for the MBFQ setup is 23.22\%. This shows that MBFQ has minimum CPU overhead.

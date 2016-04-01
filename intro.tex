@@ -1,27 +1,26 @@
 \section {Introduction}
 
-In this paper, we revisit the age-old problem of weighted fair
-allocation of bandwidth among competing ``flows''. Why do we need a new solution
-for such a well-studied problem? The reason is that the new context and
-requirements caused by {\em software implementation} in a {\em virtualized cloud}
-both demand and allow a simple and CPU-efficient solution. 
+In this paper, we revisit the age-old problem of weighted fair allocation of
+bandwidth among competing ``flows''. Why do we need a new solution for such a
+well-studied problem? The reason is that the new context and requirements caused
+by {\em software implementation} in a {\em virtualized cloud} both demand and
+allow a simple and CPU-efficient solution. 
 
 Fair bandwidth allocation has typically been studied in the context of a router.
-It was assumed that one had to deal with thousands, if not
-millions of flows. It was also assumed (perhaps unjustifiably) that
-bandwidth had to be apportioned at a fine granularity approaching ideal
-processor sharing. A tight coupling between the packet transmission engine and
-the packet scheduler was also assumed, since both were implemented in switch
-hardware.  For example, the DRR~\cite{drr} implementation assumes that the
-scheduler is woken up on every packet departure. Further, the "CPU utilization"
-was important only in the sense that the switch hardware had to capable of
-handling the expected workload because the CPU (switch hardware) was dedicated
-to scheduling.
+It was assumed that one had to deal with thousands, if not millions of flows. It
+was also assumed (perhaps unjustifiably) that bandwidth had to be apportioned at
+a fine granularity approaching ideal processor sharing. A tight coupling between
+the packet transmission engine and the packet scheduler was also assumed, since
+both were implemented in switch hardware.  For example, the DRR~\cite{drr}
+implementation assumes that the scheduler is woken up on every packet departure.
+Further, the "CPU utilization" was important only in the sense that the switch
+hardware had to capable of handling the expected workload because the CPU
+(switch hardware) was dedicated to scheduling.
 
 Our context is quite different. We want to build a packet scheduler for Windows
-Hyper-V Virtual Switch that ensures that VMs hosted on a single server share outgoing
-bandwidth in proportion to specified weights. Customized versions of this
-Vswitch powers Azure, and many large private corporate clouds. Our context
+Hyper-V Virtual Switch that ensures that VMs hosted on a single server share
+outgoing bandwidth in proportion to specified weights. Customized versions of
+this Vswitch powers Azure, and many large private corporate clouds. Our context
 implies:
 
 \noindent {\bf No hardware assumptions:} We must support legacy deployments, and so cannot assume NIC hardware support for
@@ -47,26 +46,26 @@ determined by the pricing tier.  A granularity of 1 Mbps typically suffices.  Fi
 used nor demanded by the customers, since application-layer issues often have
 far more impact on throughput.
 
-We {\em do}, however, want our scheduler to be as
-work-conserving as possible, and we {\em do} want to allocate any spare
-bandwidth roughly proportionally among backlogged VMs.
+We {\em do}, however, want our scheduler to be as work-conserving as possible,
+and we {\em do} want to allocate any spare bandwidth roughly proportionally
+among backlogged VMs.
 
 We designed a packet scheduler to provide roughly proportional bandwidth sharing
 with  minimum CPU overhead by refactoring scheduling into two parts: a {\em
-microscheduler} that controls the send rate of a VM using a token bucket,
-and a {\em macroscheduler} that periodically allocates tokens to each
-microscheduler based on VM bandwidth usage.  Coordination costs are small and
-limited to the macroscheduler that runs once every scheduling period $T$ (say 100
-milliseconds); by contrast, each microscheduler can run in a separate thread/core
-allowing scaling to 40 Gbps of overall transmit bandwidth with little CPU
-overhead, as we demonstrate in Section~\ref{sec:experiments}.
+microscheduler} that controls the send rate of a VM using a token bucket, and a
+{\em macroscheduler} that periodically allocates tokens to each microscheduler
+based on VM bandwidth usage.  Coordination costs are small and limited to the
+macroscheduler that runs once every scheduling period $T$ (say 100
+milliseconds). Each microscheduler can run in a separate thread/core. The split
+scheduler can thus scale to high overall transmit bandwidth with very little
+CPU overhead.
 
-Our design tradeoff is that when demand changes, it takes a few 
-macroscheduler periods ($T$) before the system converges to fair allocations,
-whether in allowing a previously idle VM to recapture its allocated bandwidth or
-to redistribute bandwidth when a VM's demand falls.  $T$  must be high not just
-to reduce CPU overhead but also to stably measure the bandwidth demand of a VM
-in the face of bursts.
+Our design tradeoff is that when demand changes, it takes a few macroscheduler
+periods ($T$) before the system converges to fair allocations, whether in
+allowing a previously idle VM to recapture its allocated bandwidth or to
+redistribute bandwidth when a VM's demand falls.  $T$  must be high not just to
+reduce CPU overhead but also to stably measure the bandwidth demand of a VM in
+the face of bursts.
 
 Since the NIC does not provide per-packet feedback, the macroscheduler also
 needs to solve a {\em congestion problem} to ensure that the bandwidths
@@ -76,7 +75,7 @@ based on its measured demand in the last period.
 
 Unlike TCP, however, the VM clients share common state that can be used to
 enable eventual {\em weighted fairness}, which is not a goal of TCP.  Estimating
-future bandwidth by measurement is also similar to  Measurement Based Admission
+future bandwidth by measurement is similar to  Measurement Based Admission
 control (MBAC)~\cite{mbac}.  However, MBAC is about {\em admission control} of
-flows  and not on real-time {\em fair queing} of packets. 
+flows  and not on real-time {\em fair queuing} of packets. 
 
