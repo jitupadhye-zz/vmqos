@@ -10,8 +10,9 @@ Like other LWF drivers, MBFQ uses a standard NDIS API to receive outgoing
 packets from the upper stack and sends conformed packets to the lower stack
 through another standard NDIS API.  MBFQ implementation is completely abstracted
 from the application above and the hardware below.  The only information from
-hardware that MBFQ receives is a standard NDIS API for receiving link state
-status to determine the link capacity of the underlying network adapter.
+hardware that MBFQ receives is from a standard NDIS API for receiving link state
+status (NDIS\_STATUS\_LINK\_STATE) to determine the link capacity of the underlying 
+network adapter.
 
 {\bf The macroscheduler}: MBFQ uses a timer to invoke the macroscheduler every
 100 milliseconds. if the network adapter utilization is below 80\% the

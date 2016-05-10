@@ -66,10 +66,12 @@ NetMap~\cite{netmap}, that allow them to bypass the NIC batching.  This is not
 feasible in our scenario. For fine-grained scheduling, they also require more
 CPU cycles than we can afford to spend.
 
-We must also consider another subtle issue.  The software entity that
-schedules packets from the queues must ensure that packets are en-queued to the
-NIC's transmit buffer in the same order that they are de-queued from VSwitch
-queues.  
+We must also consider another subtle issue with classical fair queuing model.  
+The software entity that schedules packets from the queues must ensure that 
+packets are en-queued to the NIC's transmit buffer in the same order that they 
+are de-queued from the VSwitch queues.  Without preserving the ordering,
+queues on different CPUs would compete, post qos-scheduler, for the NIC's
+transmit buffer, leading to loss of fairness at the NIC level.
 
 There are two options to achieve this. First, the software could use a handle to
 the NIC's transmit buffer.  This requires strong coordination between the

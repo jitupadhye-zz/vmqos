@@ -28,6 +28,8 @@
 \begin{figure}[t]
 {\footnotesize
 \begin{algorithmic}[1]
+\State $VmCount_{All} \gets 0$
+\State $W_{All} \gets 0$
 \State $AvailBw_{All} \gets C$
 \For{(each $VM$ sharing the link capacity)}
 \State $SR_{i} \gets AverageSendRateInLastTSeconds$
@@ -129,7 +131,9 @@ round, we set $TR = 1.5*AR$, and if it qualifies again, we set $TR = \max(2*AR,
 MG)$ -- i.e.  if needed, we let it go to full minimum guaranteed bandwidth (or
 higher).  Thus, we are conservative in the first two rounds, but a customer with
 substantial pending demand is guaranteed to reach the minimum guaranteed
-bandwidth in three time intervals or less.
+bandwidth in three time intervals or less. This staged allocation increment is a balance
+between granting the VM its bandwidth guarantee as quickly as possible, and minimizing
+unused bandwidth (i.e. maximizing work-conserving property).
 
 If, on the other hand, the VM is using less than 85\% of its allocated
 bandwidth, i.e. $SR \leq 0.85*AR$ for five consecutive intervals (i.e. 500 milliseconds),
