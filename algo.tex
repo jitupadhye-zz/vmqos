@@ -76,7 +76,7 @@
 \begin{figure}[t]
 {\footnotesize
 \begin{algorithmic}[1]
-\setalglineno{33} 
+\setalglineno{34} 
 \While{($AvailBw_{All} > 0$ and $VmCount_{All} \ne 0$)}
 \For{(each $VM$ sharing the network adapter)}
 \If {($BelowTR_{i} = true$)}
@@ -146,7 +146,7 @@ is allocated in proportion to the VMs' weights.
 
 We start by initializing each VM's allocated rate ($AR$) to be the minimum of its 
 target rate ($TR$)
-and its guaranteed rate ($MG$) (line 22  in Figure~\ref{fig:mbfq_p1}) .  
+and its guaranteed rate ($MG$) (line 24  in Figure~\ref{fig:mbfq_p1}) .  
 This guarantees congestion freedom since the
 sum of the $MG$ does not exceed the link bandwidth.  But it can leave bandwidth
 on the table.

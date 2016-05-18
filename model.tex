@@ -1,14 +1,5 @@
 \section{Model}
 \label{sec:model}
-We seek to allocate the outbound link bandwidth among client VMs, to ensure:  
-
-{\bf 1. Congestion Freedom:}  The sum of the allocated bandwidths does not
-exceed the outbound link bandwidth.
-
-{\bf 2. Strong Fair Allocation: } The bandwidth is divided among clients in
-proportion to their weights, not exceeding their demand. Leftover bandwidth is
-divided proportionally.
-
 \begin{figure*}[t]
 \center
 \subfigure[Standard Fair queuing model]
@@ -30,14 +21,14 @@ divided proportionally.
 \label{fig:sched_mod}
 \vspace{-0.5em}
 \end{figure*}
+We seek to allocate the outbound link bandwidth among client VMs, to ensure:  
 
-\begin{figure}
-\centering
-\includegraphics[width=0.7\columnwidth, trim=60pt 20mm 0pt 8mm]{figures/completesburst}
-\caption{Burstiness of packet transmit-completes}
-\label{completesburst}
-\vspace{-3mm}
-\end{figure}
+{\bf 1. Congestion Freedom:}  The sum of the allocated bandwidths does not
+exceed the outbound link bandwidth.
+
+{\bf 2. Strong Fair Allocation: } The bandwidth is divided among clients in
+proportion to their weights, not exceeding their demand. Leftover bandwidth is
+divided proportionally.
 
 Classical fair queuing model (Figure~\ref{fig:qosmodel}) used by algorithms such
 as DRR~\cite{drr} and WF2Q~\cite{wf2q} make two implicit assumptions. First,
@@ -85,15 +76,16 @@ Additionally, having to process packets on a single thread forces packets that
 were processed on different processors to be then processed on a different
 single processor, leading to cache misses which increase latency.  
 
-Therefore,
-our implementation needs to be able to schedule packets across multiple processors.  This
-means we cannot satisfy the second implicit assumption that classical 
-fair queuing models made (namely the scheduler can keep up with link speed) if the scheduler
- is invoked on a per-packet basis.  Signaling events across processors on a per-packet basis is prohibitively expensive.
-For example, in Figure~\ref{completesburst}, transmission completes can occur on the order of
-nanoseconds.  Signaling a scheduler at that granularity would require the CPU to spend
-most of its time doing the signaling, leaving little cycles left for packet processing.  
-It typically takes at least one dedicated core to saturate a 40Gbps link. 
+Therefore, our implementation needs to be able to schedule packets across
+multiple processors.  This means we cannot satisfy the second implicit
+assumption that classical fair queuing models made (namely the scheduler can
+keep up with link speed) if the scheduler is invoked on a per-packet basis.
+Signaling events across processors on a per-packet basis is prohibitively
+expensive.  For example, in Figure~\ref{completesburst}, transmission completes
+can occur on the order of nanoseconds.  Signaling a scheduler at that
+granularity would require the CPU to spend most of its time doing the signaling,
+leaving very few cycles for packet processing.  It typically takes at least one
+dedicated core to saturate a 40Gbps link. 
 
 Our solution is to divide the scheduler into two entities as shown in
 Figure~\ref{fig:macroscheduler}.   The macroscheduler runs only every $T$
@@ -106,3 +98,10 @@ worst case time for a VM to ramp up to its guaranteed bandwidth, and it's
 counterpart: the minimum amount of time needed to redistribute ``unused''
 bandwidth from a VM that is not fully using its allocated bandwidth to other
 active VMs. 
+\begin{figure}
+\centering
+\includegraphics[width=0.7\columnwidth, trim=60pt 20mm 0pt 8mm]{figures/completesburst}
+\caption{Burstiness of packet transmit-completes}
+\label{completesburst}
+\vspace{-3mm}
+\end{figure}

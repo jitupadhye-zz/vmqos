@@ -46,7 +46,7 @@ small.
 While a 100ms initial response time is not suitable for some latency-sensitive applications,
 many applications that we tested, including video streaming and file transfers, can tolerate
 this delay. Latency-sensitive applications can use hardware-assisted QoS such as 802.1p
-to isoliate their traffic from the general VM traffic.  Alternatively, an implementation of MBFQ
+to isolate their traffic from the general VM traffic.  Alternatively, an implementation of MBFQ
 could have a combination of static and dynamic bandwidth allocations where latency-sensitive
 VMs are assigned static queues, and other VMs dynamically share the remaining bandwidth.
 
@@ -133,7 +133,7 @@ sending, MBFQ performs bandwidth allocation to give VM3 its fair share.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.7\columnwidth,trim=60pt 40mm 0pt 8mm]{figures/rampupcomparison}
+\includegraphics[width=0.6\columnwidth,trim=60pt 40mm 0pt 8mm]{figures/rampupcomparison}
 \caption{TCP and MBFQ ramp up}
 \label{rampupcomparison}
 \vspace{-3mm}
@@ -196,7 +196,7 @@ the last 1000ms)
 
 Figure~\ref{rampdowntime1} shows that the bandwidth stays roughly the same with
 MBFQ and without MBFQ with a reclaim timer of 500 or 1000 msec. On the other
-hand,Figure~\ref{rampdowntime2} shows that with instantaneous reclaiming
+hand, Figure~\ref{rampdowntime2} shows that with instantaneous reclaiming
 (reclaim timer of 0) the bandwidth allocated to the VM is significantly affected
 and its noticeable even at a reclaim timer of 200 msec.
 
@@ -210,10 +210,9 @@ We measure the CPU overhead of MBFQ for the setup in Section~\ref{sec:fairshare}
 by comparing the CPU utilization of that setup to the CPU utilization of a base scenario
 without MBFQ.  
 
-For the base scenario, we assign static rate limits to VM1, VM2, VM3, and VM4 with 
-226Mbps, 226Mbps, 2.26Gbps, 
-and 6.79Gbps respectively.  These are the rates that MBFQ dynamically distributes  to
-the VMs when all VMs are active.
+For the base scenario, we assign static rate limits to VM1, VM2, VM3, and VM4
+with 226Mbps, 226Mbps, 2.26Gbps, and 6.79Gbps respectively.  These are the rates
+that MBFQ dynamically distributes  to the VMs when all VMs are active.
 
 With all VMs active, the CPU utilization of the base scenario is 22.74\%, and CPU utilization
-for the MBFQ setup is 23.22\%. This shows that MBFQ has minimum CPU overhead.
+with MBFQ is 23.22\%. This shows that MBFQ has minimum CPU overhead.

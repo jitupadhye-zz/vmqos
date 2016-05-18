@@ -1,10 +1,10 @@
 \section {Introduction}
 
-In this paper, we revisit the age-old problem of weighted fair allocation of
-bandwidth among competing ``flows''. Why do we need a new solution for such a
-well-studied problem? The reason is that the new context and requirements caused
-by {\em software implementation} in a {\em virtualized cloud} both demand and
-allow a simple and CPU-efficient solution. 
+We revisit the age-old problem of weighted fair allocation of bandwidth among
+competing ``flows''. Why do we need a new solution for such a well-studied
+problem? The reason is that the new context of, and requirements imposed by {\em
+software implementation} in a {\em virtualized cloud} environment. This new
+context both {\em demands} and {\em allows} a simple and CPU-efficient solution. 
 
 Fair bandwidth allocation has typically been studied in the context of a router.
 It was assumed that one had to deal with thousands, if not millions of flows. It
@@ -21,44 +21,47 @@ Our context is quite different. We want to build a packet scheduler for Windows
 Hyper-V Virtual Switch that ensures that VMs hosted on a single server share
 outgoing bandwidth in proportion to specified weights. Customized versions of
 this Vswitch powers Azure, and many large private corporate clouds. Our context
-implies:
+implies that:
 
-\noindent {\bf No hardware assumptions:} We must support legacy deployments, and so cannot assume NIC hardware support for
-packet scheduling which must, instead, be done in the CPU.
+\noindent {\bf We cannot assume any hardware support:} We must support legacy
+deployments, and so cannot assume NIC hardware support for packet scheduling.
+Instead, it must be be done by the CPU.
 
-\noindent {\bf High coordination costs:} Coordination between a
-software Vswitch and a hardware NIC is very expensive at Gigabit speeds, requiring optimizations
-like Large Send Offload.  Transmission from a VM to the NIC
-should ideally bypass a coordinating scheduler to
-minimize context switches, and avoid access to shared state to minimize lock
-overhead.  Further, to scale to 40 Gbps, the scheduler should be distributed
-across cores instead of being single-threaded. 
+\noindent {\bf Coordination costs are high:} Coordination between a software
+Vswitch and a hardware NIC is very expensive at Gigabit speeds, requiring
+optimizations like Large Send Offload.  Transmission from a VM to the NIC should
+ideally bypass a coordinating scheduler to minimize context switches, and avoid
+access to shared state to minimize lock overhead.  Further, to scale to 40 Gbps,
+the scheduler should be distributed across cores instead of being
+single-threaded. 
 
-\noindent {\bf CPU cycles are precious:} For a cloud provider, any CPU cycles saved from
-say packet scheduling can be resold for profit, especially with the advent of
-elastic computing~\cite{aws}.  This requires us to depart from the state-of-the
-art software solutions such as QFQ~\cite{qfq} that requires a CPU to do
-significant processing {\em on every sent packet}.
+\noindent {\bf CPU cycles are precious:} For a cloud provider, any CPU cycles
+saved from say packet scheduling can be resold for profit~\cite{aws}.  This
+requires us to depart from the state-of-the art software solutions such as
+QFQ~\cite{qfq} that requires a CPU to do significant processing {\em on every
+sent packet}.
 
-\noindent {\bf Fine-grained guarantees unnecessary:} Public and private cloud providers typically host 
-less than 100 VMs per physical server, and provide only coarse per-VM bandwidth guarantees
-determined by the pricing tier.  A granularity of 1 Mbps typically suffices.  Fine-grained, per-flow bandwidth is neither
-used nor demanded by the customers, since application-layer issues often have
-far more impact on throughput.
+\noindent {\bf Fine-grained guarantees are unnecessary:} Public and private
+cloud providers typically host less than 100 VMs per physical server, and
+provide only coarse per-VM bandwidth guarantees determined by the pricing tier.
+A granularity of 1 Mbps typically suffices.  Fine-grained, per-flow bandwidth is
+neither used nor demanded by the customers, since application-layer issues often
+have far more impact on throughput.
 
 We {\em do}, however, want our scheduler to be as work-conserving as possible,
 and we {\em do} want to allocate any spare bandwidth roughly proportionally
 among backlogged VMs.
 
-We designed a packet scheduler to provide roughly proportional bandwidth sharing
-with  minimum CPU overhead by refactoring scheduling into two parts: a {\em
-microscheduler} that controls the send rate of a VM using a token bucket, and a
-{\em macroscheduler} that periodically allocates tokens to each microscheduler
-based on VM bandwidth usage.  Coordination costs are small and limited to the
-macroscheduler that runs once every scheduling period $T$ (say 100
-milliseconds). Each microscheduler can run in a separate thread/core. The split
-scheduler can thus scale to high overall transmit bandwidth with very little
-CPU overhead.
+Thus, we designed a new packet scheduling algorithm, called Measurement-based
+Fair Queuing (MBFQ) to provide roughly proportional bandwidth sharing with
+minimum CPU overhead. We achieve this by refactoring scheduling into two parts:
+a {\em microscheduler} that controls the send rate of a VM using a token bucket,
+and a {\em macroscheduler} that periodically allocates tokens to each
+microscheduler based on VM bandwidth usage.  Coordination costs are small and
+limited to the macroscheduler that runs once every scheduling period $T$ (say
+100 milliseconds). Each microscheduler can run in a separate thread/core. The
+split scheduler can thus scale to high overall transmit bandwidth with very
+little CPU overhead.
 
 Our design tradeoff is that when demand changes, it takes a few macroscheduler
 periods ($T$) before the system converges to fair allocations, whether in
@@ -67,15 +70,19 @@ redistribute bandwidth when a VM's demand falls.  $T$  must be high not just to
 reduce CPU overhead but also to stably measure the bandwidth demand of a VM in
 the face of bursts.
 
-Since the NIC does not provide per-packet feedback, the macroscheduler also
-needs to solve a {\em congestion problem} to ensure that the bandwidths
-allocated do not exceed the NIC bandwidth.  Thus, reminiscent of TCP~\cite{tcp},
-the macroscheduler gradually increases/decreases the allocated bandwidth to a VM
-based on its measured demand in the last period.  
+Since the NIC does not provide per-packet feedback, the macroscheduler further
+ensures that the sum of bandwidths allocated to the VMs do not exceed the NIC
+bandwidth. To minimize bandwidth ``wastage'', the macroscheduler gradually
+increases/decreases the allocated bandwidth to a VM based on its measured demand
+in the last period. 
 
-Unlike TCP, however, the VM clients share common state that can be used to
-enable eventual {\em weighted fairness}, which is not a goal of TCP.  Estimating
-future bandwidth by measurement is similar to  Measurement Based Admission
-control (MBAC)~\cite{mbac}.  However, MBAC is about {\em admission control} of
-flows  and not on real-time {\em fair queuing} of packets. 
+The rest of the paper is organized as follows. We first describe our operating
+context in more detail (\S\ref{sec:model}). Then, we describe the MBFQ algorithm
+(\S\ref{sec:algorithm}), and its implementation (\S\ref{sec:implementation}).
+Finally, we evaluate the algorithm in (\S\ref{sec:experiments}). 
+% Unlike TCP, however, the VM clients share common state that can be used to
+% enable eventual {\em weighted fairness}, which is not a goal of TCP.  Estimating
+% future bandwidth by measurement is similar to  Measurement Based Admission
+% control (MBAC)~\cite{mbac}.  However, MBAC is about {\em admission control} of
+% flows  and not on real-time {\em fair queuing} of packets. 
 
