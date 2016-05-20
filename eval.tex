@@ -20,7 +20,7 @@ $3*T$) for the macroscheduler to allocate a VM with its minimum
 guaranteed bandwidth. Therefore, we don't want $T$ to be too large. On the other hand,
 recall that we measure send rate over the same time period. If $T$ is too small,
 the measured send rate of the VM ($SR$) may be inaccurate. The primary source of
-inaccuracy is inherent burstiness of TCP. To estimate the inaccuracy for
+inaccuracy is the inherent burstiness of TCP. To estimate the inaccuracy for
 various values of $T$, we carried out the following experiment.
 
 {\bf Experiment}: A single VM hosted on one of the servers sends data to
@@ -57,9 +57,9 @@ minimum guaranteed bandwidth. Also, we wait for up to 500 milliseconds before we
 reclaim bandwidth from a VM that is not fully using the allocated bandwidth. Are
 these time intervals appropriate?
 
-{\bf Motivation:}  While the allocated bandwidth to VM ramps up to the minimum
+{\bf Motivation:}  While the allocated bandwidth to a VM ramps up to the minimum
 guaranteed bandwidth in three intervals, the VM may not be able to ramp up as
-quickly, due to limitations of the TCP congestion control. Furthermore, waiting
+quickly, due to limitations of TCP congestion control. Furthermore, waiting
 for 500 milliseconds before reclaiming the bandwidth may lead to
 under-utilization of the link.
 

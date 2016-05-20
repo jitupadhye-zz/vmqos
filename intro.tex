@@ -2,7 +2,7 @@
 
 We revisit the age-old problem of weighted fair allocation of bandwidth among
 competing ``flows''. Why do we need a new solution for such a well-studied
-problem? The reason is that the new context of, and requirements imposed by {\em
+problem? The reason is the new context and requirements imposed by {\em
 software implementation} in a {\em virtualized cloud} environment. This new
 context both {\em demands} and {\em allows} a simple and CPU-efficient solution. 
 
@@ -71,7 +71,7 @@ reduce CPU overhead but also to stably measure the bandwidth demand of a VM in
 the face of bursts.
 
 Since the NIC does not provide per-packet feedback, the macroscheduler further
-ensures that the sum of bandwidths allocated to the VMs do not exceed the NIC
+ensures that the sum of bandwidths allocated to the VMs does not exceed the NIC
 bandwidth. To minimize bandwidth ``wastage'', the macroscheduler gradually
 increases/decreases the allocated bandwidth to a VM based on its measured demand
 in the last period. 

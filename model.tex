@@ -30,7 +30,7 @@ exceed the outbound link bandwidth.
 proportion to their weights, not exceeding their demand. Leftover bandwidth is
 divided proportionally.
 
-Classical fair queuing model (Figure~\ref{fig:qosmodel}) used by algorithms such
+The classical fair queuing model (Figure~\ref{fig:qosmodel}) used by algorithms such
 as DRR~\cite{drr} and WF2Q~\cite{wf2q} make two implicit assumptions. First,
 after packet transmission, the link alerts the hardware scheduler who chooses the
 next packet to transmit. Second, the scheduler is able to keep up with link
@@ -46,8 +46,8 @@ notifications for a random 1000 contiguous samples, for three different traffic 
 The figure shows that the size of each notification can be on the order
 of 500 kilobytes, and they can be microseconds (10000 ticks) apart. If
 we run DRR under such conditions, it would cause transmit
-jitters and packet drops, which, coupled with upper-layer throttling by the TCP
-stack, will further exacerbate the issue.  Figure~\ref{completesburst} also shows that 
+jitter and packet drops; upper-layer throttling by the TCP
+stack will further exacerbate the issue.  Figure~\ref{completesburst} also shows that 
 the distribution depends on the traffic pattern. Thus, the scheduler cannot
 simply be tuned to respond to a certain distribution.
 
@@ -94,7 +94,7 @@ contrast, run on every packet based on tokens allocated by the microscheduler.
 
 While this model reduces overhead, it has obvious drawbacks because allocations
 can only occur in units of $T$ seconds. Thus, our evaluation will focus on the
-worst case time for a VM to ramp up to its guaranteed bandwidth, and it's
+worst case time for a VM to ramp up to its guaranteed bandwidth, and its
 counterpart: the minimum amount of time needed to redistribute ``unused''
 bandwidth from a VM that is not fully using its allocated bandwidth to other
 active VMs. 

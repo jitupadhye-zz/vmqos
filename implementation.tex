@@ -8,7 +8,7 @@ Switch Extension, which is an NDIS light-weight filter (LWF) driver~\cite{fd}.
 
 Like other LWF drivers, MBFQ uses a standard NDIS API to receive outgoing
 packets from the upper stack and sends conformed packets to the lower stack
-through another standard NDIS API.  MBFQ implementation is completely abstracted
+through another standard NDIS API.  The MBFQ implementation is completely abstracted
 from the application above and the hardware below.  The only information from
 hardware that MBFQ receives is from a standard NDIS API for receiving link state
 status (NDIS\_STATUS\_LINK\_STATE) to determine the link capacity of the underlying 
